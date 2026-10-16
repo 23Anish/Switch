@@ -1,0 +1,13 @@
+name: Validate reference solutions
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  curriculum:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node scripts/check-javascript.js
+      - run: python3 scripts/check-content.py

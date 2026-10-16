@@ -1,0 +1,33 @@
+#pragma once
+#include "json.hpp"
+#include <algorithm>
+#include <array>
+#include <bitset>
+#include <cassert>
+#include <cctype>
+#include <climits>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <deque>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <memory>
+#include <numeric>
+#include <optional>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+using namespace std;
+using json = nlohmann::json;

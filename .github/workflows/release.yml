@@ -1,0 +1,24 @@
+name: Build Mac release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release tag
+        required: true
+        default: v2.0.0
+permissions:
+  contents: write
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/build-mac.sh
+      - run: build/Switch.app/Contents/MacOS/Switch --self-test
+      - name: Publish Mac package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SWITCH_TAG: ${{ inputs.version }}
+        run: |
+          shasum -a 256 dist/Switch-macOS.zip > dist/SHA256SUMS.txt
+          gh release create "$SWITCH_TAG" dist/Switch-macOS.zip dist/SHA256SUMS.txt --target "$GITHUB_SHA" --title "Switch 2.0 — Interview study studio" --notes-file RELEASE_NOTES.md

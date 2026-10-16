@@ -1,0 +1,107 @@
+[
+  {
+    "id": "google",
+    "name": "Google",
+    "summary": "An independent preparation path for software engineering roles: explain algorithms precisely, make design tradeoffs explicit, and connect your experience to the role. The exercises below are original practice prompts, not a list of reported or guaranteed Google questions. Confirm your actual interview format and permitted tools with your recruiter.",
+    "updated": "2026-10-15",
+    "focus": [
+      {
+        "title": "Build a repeatable coding conversation",
+        "body": "Use this practice routine: restate the input and output, ask about limits, walk through a small example, propose a correct baseline, then improve it. Reserve time for proof and tests. For a longest substring problem, start by enumerating ranges, then explain why a sliding window can discard its leftmost character safely. The useful invariant is that the current window contains no repeated characters; the answer is the largest valid window seen. Write the invariant before writing loops. Explain expected hash-table performance and memory use instead of calling every lookup simply constant. Practice in C++ first, then reconstruct one solution in Python to check whether you understand the idea independently of syntax."
+      },
+      {
+        "title": "Study patterns through counterexamples",
+        "body": "Prioritize graphs, binary search, dynamic programming, heaps, and interval reasoning after the array foundations. These are this app’s study choices, not company frequency rankings. For every pattern, keep a counterexample: binary search needs a monotone condition; greedy choice needs justification; Dijkstra requires nonnegative edge weights; a sliding window with a sum threshold behaves differently when negative values are allowed. Practice changing one assumption after solving a question. For example, finding a shortest path in an unweighted graph suggests BFS, while adding unequal positive weights changes the algorithm. Explain the changed invariant and complexity without relying on a memorized title."
+      },
+      {
+        "title": "Design for a stated workload",
+        "body": "Use the HLD lessons to design a document search service or a notification service. First define users, latency goals, update rate, retention, and acceptable staleness. If a fictional service receives 10 million queries daily, the daily average is about 116 queries per second; a chosen tenfold peak assumption gives roughly 1,160. Label assumptions and distinguish average from peak. Draw ingestion and serving paths separately, identify a hot partition, and decide what happens when indexing lags. Then discuss pagination, deduplication, access control, and recovery. For virtual design sessions, Google’s candidate guide explains Google Drawings and recommends familiarity with the collaboration setup; use the actual invitation for your session’s requirements."
+      },
+      {
+        "title": "Turn experience into evidence",
+        "body": "Prepare six true stories: a difficult bug, an ambiguous requirement, a disagreement, a reliability improvement, a mistake, and a time you helped someone else. Give enough context to understand your decision, identify your own contribution, and separate measured results from estimates. A debugging story is stronger when it explains competing hypotheses and the experiment that ruled one out. Google’s published recruiter story describes preparing accomplishment notes and practicing structured behavioral answers. Use that as a rehearsal technique, not a claim about a universal scoring rubric. End each story with what you learned and how your later behavior changed."
+      },
+      {
+        "title": "Add role-specific systems and AI depth",
+        "body": "Choose depth from the job description. For infrastructure or C++ work, explain object lifetimes, memory layout, concurrency, profiling, and a reproducible performance experiment. For an AI application role, design a retrieval system with ingestion, permission filtering, ranking, citations, evaluation, and an explicit failure path when evidence is weak. Compare a deterministic tool workflow with an agent loop and explain why extra autonomy may increase latency and error opportunities. Practice one small end-to-end example: a documentation assistant that retrieves only documents the current user can access, evaluates citation support on held-out questions, and records tool failures without logging secrets."
+      }
+    ],
+    "practiceTopics": ["Arrays & fundamentals", "Hashing & prefix sums", "Binary search", "Graph traversal", "Shortest paths & disjoint sets", "Dynamic programming foundations", "Sequence & string dynamic programming", "BSTs, heaps & ordered data"],
+    "mock": {"codingMinutes": 45, "designMinutes": 45, "behavioralMinutes": 20},
+    "checklist": [
+      "I can derive a baseline and an improvement for an unfamiliar medium problem.",
+      "I can state an invariant and justify why each element or state is processed a bounded number of times.",
+      "I test empty or minimum input, duplicates, boundary indices, disconnected graphs, and overflow where relevant.",
+      "I have completed a timed mock without looking at solutions and reviewed the mistakes the next day.",
+      "I can estimate a workload, draw a serving path, and explain one failure and recovery scenario.",
+      "I have six truthful experience stories with my contribution, evidence, and reflection.",
+      "I have checked the role, recruiter instructions, interview tools, and any requested preparation materials."
+    ],
+    "questions": [
+      {"q": "Practice: How would you find the fewest transfers between stations?", "a": "Clarify whether every connection has equal cost and whether the result is a count or an actual route. For equal-cost connections, model stations as vertices and use BFS with a queue, visited set, and predecessor map. The first discovery gives minimum edge count because BFS expands distance layers. Return an unreachable result explicitly. If the task measures travel time with nonnegative unequal costs, use Dijkstra instead. Test source equals destination, cycles, and disconnected stations."},
+      {"q": "Practice: Your dynamic program is correct but too slow. What do you inspect?", "a": "Count distinct states and work per state separately. Check whether state includes redundant history, whether transitions repeatedly scan the same range, and whether a prefix aggregate or a different ordering removes repeated work. Memoization removes duplicate states, not expensive transitions. For a two-dimensional recurrence, inspect whether only the previous row is needed, but retain information if reconstruction requires it. Recheck update order after reducing memory; an in-place loop can accidentally reuse the current item."},
+      {"q": "Practice: What would you say when a proposed greedy choice feels plausible?", "a": "State the choice precisely and try to construct a small counterexample before implementing it. If it survives, seek an exchange argument: show that an optimal solution can be changed to make the same first choice without reducing quality, then solve the remaining subproblem. For maximum non-overlapping intervals, earliest finishing time leaves at least as much room for the rest as any alternative first interval. A different objective, such as weighted intervals, invalidates that argument."},
+      {"q": "Practice: How would a search service handle stale results after a document is deleted?", "a": "Define the deletion contract first. If deletion must take effect immediately for access control, check authorization or a deletion marker on the serving path even while asynchronous indexes catch up. Publish versioned deletion events, make consumers idempotent, and monitor indexing lag. Explain that removing a document from one index is insufficient if caches, replicas, or snippets retain it. Decide which stores are authoritative and how retries and reconciliation eventually clean up derived copies."},
+      {"q": "Practice: How do you discuss a technical disagreement constructively?", "a": "Describe the shared goal and constraints, then each option’s strongest argument. Explain what evidence was missing and how you gathered it: a benchmark, failure simulation, prototype, or customer feedback. State your decision and your own contribution without making the other person a villain. If your idea lost, explain how you supported the chosen approach and what you learned. Use a real example; the quality comes from specific reasoning, not an invented perfect outcome."},
+      {"q": "Practice: How would you judge a retrieval assistant beyond whether its answer sounds good?", "a": "Build a representative set of questions with expected evidence and acceptable outcomes. Measure retrieval recall separately from answer support, correctness, refusal when evidence is missing, latency, and cost. Include permission boundaries and malicious text embedded in retrieved documents. Compare changes against a fixed baseline, investigate regressions by category, and preserve held-out cases. A model judging its own fluent answer is insufficient evidence that the cited document supports the claim."}
+    ],
+    "officialSources": [
+      {"title": "Google Careers — interview preparation", "url": "https://www.google.com/about/careers/applications/interview-tips"},
+      {"title": "Google Careers — hiring process", "url": "https://www.google.com/about/careers/applications/how-we-hire"},
+      {"title": "Google — virtual technical interview candidate guide", "url": "https://services.google.com/fh/files/misc/technical_virtual_interviews_candidate_resource.pdf"},
+      {"title": "Life at Google — a recruiter’s preparation experience", "url": "https://blog.google/company-news/inside-google/life-at-google/how-google-recruiter-prepared-her-own-interview/"}
+    ]
+  },
+  {
+    "id": "microsoft",
+    "name": "Microsoft",
+    "summary": "An independent preparation path built around problem solving, implementation, testing, system design, and evidence from your work. Microsoft’s technical guidance discusses these engineering activities; your role and recruiter determine the actual assessment. The examples below are original drills, not reported interview questions.",
+    "updated": "2026-10-15",
+    "focus": [
+      {
+        "title": "Finish the engineering loop",
+        "body": "Microsoft’s technical guidance emphasizes clarifying the task, planning a solution, writing executable code in a language you know, and testing it. Turn this into a habit for every drill. For merging intervals, clarify whether touching endpoints overlap, show a simple approach, sort by start, and maintain the merged prefix. Explain O(n log n) time and whether sorting mutates the input. Before declaring completion, try an empty list, nested intervals, equal starts, and disjoint ranges. Keep five minutes of a 45-minute practice block for verification and tradeoffs. These timings are a study schedule; the recruiter’s instructions take precedence."
+      },
+      {
+        "title": "Practice data structures as design choices",
+        "body": "Use arrays, maps, lists, trees, heaps, graphs, and tries to solve concrete access patterns. In an LRU cache, a hash map locates an entry and a doubly linked list maintains recency; a successful read moves its entry to the front and insertion may evict the tail. Define capacity-zero behavior and update semantics before coding. In C++, understand iterator validity and ownership rather than adding raw pointers without a lifetime plan. In Python, compare an ordered container with an explicit node implementation. Add unit tests for repeated updates, eviction order, and capacity one, then explain what synchronization would be needed for concurrent clients."
+      },
+      {
+        "title": "Connect LLD to distributed behavior",
+        "body": "Microsoft’s technical preparation page includes distributed systems and architecture topics. Use the LLD and HLD lessons together: model a file-sync client with states for pending, uploading, committed, and retryable failure, then design the server that accepts its operations. Separate the control plane for metadata from the data path for file chunks. Define an idempotency key so a timeout and retry do not create duplicate revisions. Decide how concurrent edits are detected and what users see during a conflict. Compare strong metadata consistency with asynchronous thumbnail or search indexing, and explain why each boundary can have a different freshness requirement."
+      },
+      {
+        "title": "Show customer impact and learning",
+        "body": "Microsoft’s general guidance discusses collaboration, learning, customer perspective, and structured answers that include reflection. Prepare a real example where user feedback changed your implementation. Explain the original assumption, the feedback signal, alternatives considered, and the resulting decision. If you improved a slow workflow, distinguish a laboratory benchmark from observed production latency. Include how you collaborated across boundaries and how you verified that the change solved the user’s problem. A useful reflection identifies what you would do earlier next time, such as collecting a baseline or involving support engineers before choosing an optimization."
+      },
+      {
+        "title": "Build an AI and reliability case study",
+        "body": "For a role involving AI, rehearse a support assistant for a fictional enterprise. Explain tenant isolation, document permissions, retrieval quality, model selection, tool authorization, evaluation, and operational monitoring. An MCP server exposes capabilities; it does not remove the need to authorize each action. A hook can perform a lifecycle check, while a skill packages reusable task guidance; neither guarantees a model will reason correctly. Start with a read-only workflow, measure accuracy on representative questions, and define an approval boundary for consequential actions. Describe what happens if a tool times out, returns malformed data, or includes untrusted instructions in its response."
+      }
+    ],
+    "practiceTopics": ["Arrays & fundamentals", "Hashing & prefix sums", "Linked lists", "Stacks & queues", "Binary trees", "BSTs, heaps & ordered data", "Graph traversal", "Dynamic programming foundations"],
+    "mock": {"codingMinutes": 45, "designMinutes": 45, "behavioralMinutes": 20},
+    "checklist": [
+      "I can write complete C++ or Python code, explain its complexity, and test it before finishing.",
+      "I can identify edge cases and explain invalid input, error handling, and numeric limits.",
+      "I can design and implement a small object model with clear ownership and testable dependencies.",
+      "I can explain retry safety, replication, caching, partitioning, and a recovery plan in one system design.",
+      "I can describe a customer-facing decision with evidence of its outcome.",
+      "I have rehearsed feedback, collaboration, failure, and learning stories with a concrete reflection.",
+      "I have reviewed the role-specific requirements and confirmed the interview format and tools."
+    ],
+    "questions": [
+      {"q": "Practice: What tests would you add to an LRU cache?", "a": "Check capacity zero and one, a get on a missing key, replacing an existing key, reads that refresh recency, and eviction after mixed operations. For capacity two, put A, put B, read A, then put C: B must be evicted. Assert both returned values and ordering invariants. A map entry must correspond to exactly one list node. If concurrency is required, define atomic operations and include an interleaving test around lookup and eviction."},
+      {"q": "Practice: A payment request timed out. Is it safe to retry?", "a": "A timeout means the client does not know the outcome; the server may already have committed the payment. Use a stable idempotency key for the same logical operation and store its result with the operation’s authoritative state. A retry should return the original result rather than charge again. Reject reusing the key with different parameters. Explain the retention window, concurrency handling, and how downstream effects are reconciled; a cache alone is not a durable payment ledger."},
+      {"q": "Practice: How would you design a file-sync conflict policy?", "a": "Attach an expected version to an update and compare it atomically with the current metadata version. A mismatch means someone changed the file since the client’s base version. Preserve both edits or present an explicit conflict rather than silently overwriting unless the product intentionally chooses that behavior. Upload chunks independently and commit the manifest only after required chunks exist. Distinguish upload retries from metadata conflicts, and explain offline edits, deletions, and cleanup of orphaned chunks."},
+      {"q": "Practice: What does a useful reflection add to a project story?", "a": "Reflection shows how experience changed your future decisions. After stating the situation, responsibility, actions, and result, identify one assumption you revised and one concrete practice you adopted. For example, a performance fix might teach you to measure realistic input distributions before selecting a data structure. Do not manufacture metrics or claim the whole team’s work as yours. Explain your own role and name uncertainty if the result was not measured precisely."},
+      {"q": "Practice: An endpoint is fast on average but some customers wait seconds. What do you investigate?", "a": "Measure latency percentiles by request type, tenant, region, and dependency rather than relying on the average. Follow traces to separate queueing, database calls, retries, cold starts, and large payloads. Check saturation and whether one tenant creates hot keys. Form a testable hypothesis and compare before and after under similar load. A cache may help reads, but it can hide a slow path or create stampedes; choose the fix only after identifying the bottleneck."},
+      {"q": "Practice: How do you safely let an AI assistant change a support ticket?", "a": "Require authenticated user context and authorize the specific ticket and operation on the server. Use a narrow tool schema, validate arguments, show a concrete proposed change when approval is required, and make retries idempotent. Treat ticket text and retrieved documents as data, not instructions that grant access. Log the authorized operation and outcome with appropriate redaction. Test cross-tenant requests, denied permissions, prompt injection in ticket content, tool failures, and repeated requests."}
+    ],
+    "officialSources": [
+      {"title": "Microsoft Careers — technical interviewing", "url": "https://careers.microsoft.com/v2/global/en/hiring-tips/technical-interviewing"},
+      {"title": "Microsoft Careers — interview tips for all roles", "url": "https://careers.microsoft.com/v2/global/en/hiring-tips/interview-tips"},
+      {"title": "Microsoft Careers — early-in-profession guidance", "url": "https://careers.microsoft.com/v2/global/en/hiring-tips/student-interviewing"}
+    ]
+  }
+]

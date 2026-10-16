@@ -1,0 +1,1424 @@
+[
+  {
+    "id": "lld-01",
+    "track": "LLD",
+    "title": "SOLID through a delivery service",
+    "level": "Foundation",
+    "minutes": 60,
+    "summary": "Turn changing requirements into small contracts and testable policies.",
+    "sections": [
+      {
+        "heading": "Start with a behavior contract",
+        "body": "A useful low-level design begins with observable behavior. For a parcel service, accept a parcel, quote a price, book delivery, and cancel before dispatch. Define what each operation promises: a quote never changes persisted state; booking either creates one booking or returns a failure; cancellation of a dispatched parcel is rejected. Invariants include nonnegative weight, a supported destination, and a unique booking identifier. These promises are more informative than a large inheritance diagram. State whether inputs are copied, borrowed, or owned. In C++, a value object can validate weight at construction, while a service accepts a const reference when it only reads the parcel."
+      },
+      {
+        "heading": "Apply the five principles to actual changes",
+        "body": "Single responsibility separates pricing rules from database access because they change for different reasons. Open/closed design allows a new price policy without adding branches throughout booking code, but does not require an interface for every helper. Liskov substitution means every policy honors the advertised contract; a cheaper policy cannot silently reject an otherwise supported destination. Interface segregation avoids making a read-only tracking client implement booking operations. Dependency inversion makes the booking workflow depend on a repository contract instead of one database library. The aim is a small set of stable boundaries around likely changes, not maximum abstraction."
+      },
+      {
+        "heading": "Worked example: add weekend pricing",
+        "body": "Suppose the base charge is 40 units plus 8 per kilogram. A 3 kg parcel costs 64 units. A weekend policy adds a 20-unit surcharge, producing 84. Represent the surcharge as composition around the base policy or as an explicit rule list. Keep currency amounts in integer minor units and document rounding. The service receives the chosen policy and a clock rather than consulting global time. A test fixes the clock to Saturday and checks 84; another fixes Monday and checks 64. The booking repository remains untouched. If the carrier rejects dispatch later, update shipment state through an explicit transition instead of changing the original quote."
+      },
+      {
+        "heading": "Tradeoffs and failure reasoning",
+        "body": "A virtual class in C++ can express a runtime policy; a callable or template can be simpler when selection occurs at build time. Python can accept a callable with a documented input/output contract. Neither language makes semantic substitutability automatic. Test malformed input, overflow limits, unavailable repositories, and a notification failure after booking succeeds. Sending a notification inside the same method does not make it transactional with storage. If reliable notification matters, persist a pending notification with the booking and process it separately. Keep errors typed enough that callers distinguish rejected input from temporary failure."
+      },
+      {
+        "heading": "Practice and review",
+        "body": "Implement booking with an in-memory repository first. Replace it with a second fake that fails on demand without changing the service. Add weekend pricing, a second carrier, and a read-only tracking view. Count which files change and explain why. Review whether every abstraction protects a real variation and whether every dependency has a clear owner. Write one contract test that runs against all price policies and one test proving a retry with the same request key does not create a second booking. Finish by explaining where the design deliberately stops: fleet routing and distributed transactions belong to a larger architecture discussion."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "DeliveryService",
+        "PricePolicy",
+        "DeliveryRepository",
+        "Notifier"
+      ],
+      "caption": "DeliveryService coordinates contracts; pricing, persistence, and notification can change independently."
+    },
+    "questions": [
+      {
+        "q": "What does Liskov substitution add beyond matching method signatures?",
+        "a": "A replacement must preserve the behavioral promises, including supported inputs, postconditions, and failure semantics."
+      },
+      {
+        "q": "Should every class have an interface?",
+        "a": "No. Introduce a boundary where independent change, substitution, ownership, or testing justifies it."
+      },
+      {
+        "q": "Where should a fake clock enter the design?",
+        "a": "Inject it into the policy or service that interprets time, so tests can choose exact instants without global state."
+      }
+    ],
+    "lab": "Build two pricing policies in C++ or Python and prove the booking service works unchanged with both.",
+    "sources": [
+      {
+        "title": "C++ Core Guidelines: interfaces, ownership, and concurrency",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "lld-02",
+    "track": "LLD",
+    "title": "UML and responsibilities: a checkout workflow",
+    "level": "Foundation",
+    "minutes": 60,
+    "summary": "Use class, sequence, and state views to expose ownership and invariants.",
+    "sections": [
+      {
+        "heading": "Three views of one design",
+        "body": "A class view explains responsibility and relationships; a sequence view explains the order of messages; a state view explains legal transitions. These answer different questions. For checkout, Order owns order lines and its status. Product is a catalog concept, while OrderLine preserves the purchased description and price snapshot. Checkout coordinates inventory and payment through contracts. It should not own their internal storage. Use composition when a child belongs to the lifetime of its parent, association when two objects merely reference one another, and inheritance only for a genuine substitutable relationship. Put multiplicity on relationships: one order has one or more lines."
+      },
+      {
+        "heading": "Identify commands, queries, and invariants",
+        "body": "A command attempts a change such as reserve(items, requestId). A query reports information such as getOrder(orderId). Availability shown on a product page is a snapshot, so a successful query is not a guarantee that a later reservation will succeed. Define the invariant at the write boundary: the sum of committed reservations cannot exceed inventory. An order total is the sum of immutable line prices plus explicitly represented adjustments. State transitions might be Draft to AwaitingPayment to Confirmed, with Cancelled and PaymentFailed as distinct outcomes. A state enum alone is insufficient; methods must enforce which edges are legal."
+      },
+      {
+        "heading": "Worked sequence: the last item",
+        "body": "Two users try to buy the final unit. Both read availability as one. Their checkouts call an atomic reserve operation; only one receives a reservation token. That checkout authorizes payment and confirms the order using the token. The other receives OutOfStock and never charges a card. If authorization fails, release the reservation. If the gateway times out, the result is unknown rather than definitely failed. The request identifier is reused when querying or retrying the gateway. Draw the timeout as a branch in the sequence diagram, including the operation that reconciles the eventual payment state."
+      },
+      {
+        "heading": "Translate the model into code",
+        "body": "Use identifiers for cross-aggregate references instead of sharing mutable objects across every service. A C++ Order can privately hold a vector of OrderLine values and expose confirm() only when its state allows confirmation. A Python dataclass can represent an immutable line, while a service handles persistence. Return domain outcomes such as Reserved, InsufficientStock, and AlreadyReserved rather than forcing every situation into a generic boolean. Keep repository methods explicit about atomicity; get followed by save is not automatically safe under concurrent requests. Use a transaction or compare-and-set where the invariant crosses multiple stored fields."
+      },
+      {
+        "heading": "Review exercise and acceptance criteria",
+        "body": "Produce a class diagram containing no more than eight classes, a sequence for success and one failure, and a state transition table. Every arrow should have a reason, and every mutable field should have an owner. Walk through duplicate requests, cancellation during payment, and an inventory reservation expiring. Identify which questions the diagram does not answer, including durability and interprocess communication. Then write an executable happy-path test and a race simulation for the last unit. A reviewer should be able to predict the result of every command in every state without reading your implementation."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Checkout",
+        "Inventory",
+        "PaymentGateway",
+        "Order"
+      ],
+      "caption": "Checkout reserves inventory, authorizes payment, and confirms an order; failures require explicit compensating steps."
+    },
+    "questions": [
+      {
+        "q": "Why snapshot the price in an order line?",
+        "a": "Historical orders must remain stable when the current catalog price changes."
+      },
+      {
+        "q": "Can a sequence diagram prove concurrency safety?",
+        "a": "No. It makes a proposed ordering visible; atomic storage semantics and competing schedules still require analysis."
+      },
+      {
+        "q": "Why use a reservation token?",
+        "a": "It names the specific claim being confirmed or released, preventing an unrelated request from changing it."
+      }
+    ],
+    "lab": "Draw three complementary views, implement state transitions, and test two checkouts competing for one item.",
+    "sources": [
+      {
+        "title": "C++ Core Guidelines: interfaces, ownership, and concurrency",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      },
+      {
+        "title": "Microsoft Architecture Center: design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "lld-03",
+    "track": "LLD",
+    "title": "Parking lot: allocation, tickets, and payment",
+    "level": "Intermediate",
+    "minutes": 60,
+    "summary": "Design a small reservation domain with explicit ownership and race handling.",
+    "sections": [
+      {
+        "heading": "Scope and contracts",
+        "body": "Design one parking facility with several floors, multiple entry gates, and vehicle-size restrictions. Support entry, fee quotation, payment, and exit. Keep navigation, plate recognition, and city-wide reservations outside the first version. A spot has a stable identifier, floor, size, and occupancy state. A ticket records the vehicle identifier, spot, entry time, and lifecycle state. The core invariant is that a spot has at most one active ticket. A second invariant is that the same active vehicle does not accidentally receive multiple tickets from a retried entry request. State these before selecting data structures."
+      },
+      {
+        "heading": "Separate selection from commitment",
+        "body": "AllocationPolicy finds a suitable candidate according to a rule such as nearest compatible spot or preserving larger spaces. ParkingRepository atomically claims the chosen spot and creates its ticket. A policy deciding that spot A is free does not reserve A. The service must handle a competing gate winning that claim and retry within a bounded search. Keep price calculation in FeePolicy so a weekday rule does not enter the allocation code. A payment adapter reports success, failure, or unknown outcome. Display boards consume committed occupancy changes instead of independently editing the free-space count."
+      },
+      {
+        "heading": "Worked example: two entry gates",
+        "body": "There is one compact spot and one large spot. Two compact cars arrive at gates A and B at the same instant. Both policies prefer the compact spot. Gate A commits first; gate B observes its conditional update failed, then tries the large spot if the compatibility policy allows it. If large spaces are reserved for vans, B is rejected. The result depends on a stated business rule, not on inheritance. With 90 minutes parked, a fee rule of 30 units per started hour produces 60 units. Use integer time units and an explicit rounding rule so boundary cases at exactly 60 minutes are predictable."
+      },
+      {
+        "heading": "Lifecycle, concurrency, and language choices",
+        "body": "A simple lifecycle is Active to PaymentPending to Paid to Closed, with explicit recovery from a failed payment. Payment retries carry a stable idempotency key. A failed barrier sensor should not generate another charge. In a single-process interview implementation, one mutex around allocation and ticket creation can preserve correctness; explain why splitting the lock around the read and write breaks it. C++ can own tickets as values in a repository and use scoped locks. Python needs the same atomic critical section despite its interpreter behavior. Across processes, use database constraints and transactions rather than a process-local mutex."
+      },
+      {
+        "heading": "Test and extend",
+        "body": "Use an injected clock to test zero duration, exact hour boundaries, overnight stays, and a clock adjustment. Test a full lot, an incompatible vehicle, duplicate entry, duplicate payment, and exit of an unknown ticket. Verify that a failed payment leaves the vehicle parked and the occupancy count unchanged. Add an electric-charging price component without modifying ticket identity or allocation behavior. Finally compare a scan of all spots with per-size free lists: scans are simple and robust at small scale, while indexed lists reduce selection cost but require careful synchronization when reservations change."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "EntryGate",
+        "AllocationPolicy",
+        "ParkingTicket",
+        "ExitGate"
+      ],
+      "caption": "Entry atomically claims a compatible space; exit closes the active ticket only after the payment rule succeeds."
+    },
+    "questions": [
+      {
+        "q": "What is the most important invariant?",
+        "a": "A spot has no more than one active assignment, enforced at commitment rather than by a preceding availability read."
+      },
+      {
+        "q": "Where does payment idempotency belong?",
+        "a": "The payment attempt has a stable request identity stored with the ticket and reused for retries."
+      },
+      {
+        "q": "Why not create subclasses for every vehicle and floor combination?",
+        "a": "Compatibility is data and policy; multiplying subclasses makes routine business changes difficult."
+      }
+    ],
+    "lab": "Implement two simulated gates racing for one spot and verify exactly one active ticket is created.",
+    "sources": [
+      {
+        "title": "C++ Core Guidelines: interfaces, ownership, and concurrency",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      },
+      {
+        "title": "Python threading documentation",
+        "url": "https://docs.python.org/3/library/threading.html"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "lld-04",
+    "track": "LLD",
+    "title": "Elevator: scheduling meets a state machine",
+    "level": "Intermediate",
+    "minutes": 60,
+    "summary": "Separate passenger requests, dispatch policy, and movement safety.",
+    "sections": [
+      {
+        "heading": "Define the simulation boundary",
+        "body": "Build an interview simulation for a building with several cars. A hall call includes floor and desired direction; a cabin request includes a destination for a particular car. These are different commands and should not be collapsed into one number. The simulator accepts button events, advances time, and reports car state. Real elevator safety control requires specialized engineering and certification; this exercise models scheduling and software state only. Core states include Idle, MovingUp, MovingDown, DoorOpening, DoorOpen, and DoorClosing. Movement is permitted only after the door-closed event, and an out-of-service car cannot receive new assignments."
+      },
+      {
+        "heading": "Model independent responsibilities",
+        "body": "Dispatcher chooses a car using a replaceable policy. CarController maintains current floor, direction, and pending stops. DoorController manages open duration and obstruction events. A Clock or event queue drives time so tests are deterministic. Start with a nearest-compatible-car policy, then compare it with a direction-aware policy that prefers cars already moving toward a request. A sorted set of upward stops and another of downward stops make the next stop explicit. The dispatch policy must inspect a stable snapshot or coordinate through the car controller rather than directly mutating its internal queues."
+      },
+      {
+        "heading": "Worked example: direction matters",
+        "body": "Car A is at floor 3 moving up with stops at 7 and 9. Car B is idle at floor 6. A passenger at floor 5 requests down. Pure distance picks A because it is two floors away, but A may first travel to 9 and then reverse. B can reach floor 5 and immediately travel down. A direction-aware estimated-arrival policy can therefore choose B. State the cost model: one time unit per floor plus two per stop. Simulate both assignments and calculate waiting time. This makes the policy testable instead of claiming that one heuristic is always optimal."
+      },
+      {
+        "heading": "Failures and fairness",
+        "body": "A door obstruction cancels or delays closing; it must not enqueue a move while the door remains open. Repeated button presses should coalesce into one pending request. A car becoming unavailable returns its unserved hall calls to the dispatcher. Be careful with starvation: continually serving new requests in the current direction can postpone requests behind the car indefinitely. Bound sweeps or account for request age. Avoid callbacks that acquire locks in inconsistent orders. A single event loop is a strong baseline for the simulator because each transition is serialized, while dispatch calculations can use immutable snapshots."
+      },
+      {
+        "heading": "Lab and design defense",
+        "body": "Implement a deterministic event trace with time, car, event, old state, and new state. Check invariants after every event rather than only at the end. Test a repeated hall call, simultaneous cabin requests, an obstruction during closing, a request on the current floor, and a car failure with passengers represented in the simulation. Compare mean wait and maximum wait for your two dispatch policies across the same input trace. Explain how a policy change can preserve movement invariants because the controller owns them. End with a transition table listing rejected commands as well as successful ones."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "HallCall",
+        "Dispatcher",
+        "CarController",
+        "DoorController"
+      ],
+      "caption": "Dispatch assigns requests; each car accepts movement only through its state machine and door interlock."
+    },
+    "questions": [
+      {
+        "q": "Why distinguish a hall call from a cabin request?",
+        "a": "A hall call still needs car assignment and contains direction; a cabin request belongs to an assigned car and contains a destination."
+      },
+      {
+        "q": "Does nearest-car dispatch minimize waiting?",
+        "a": "Not generally. Existing stops, direction, door time, and future reversals affect arrival time."
+      },
+      {
+        "q": "How do you test without sleeping?",
+        "a": "Inject a clock or process a deterministic event queue and advance simulated time explicitly."
+      }
+    ],
+    "lab": "Build a two-car event simulator and compare dispatch policies on a fixed trace.",
+    "sources": [
+      {
+        "title": "C++ Core Guidelines: interfaces, ownership, and concurrency",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      },
+      {
+        "title": "Python threading documentation",
+        "url": "https://docs.python.org/3/library/threading.html"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "lld-05",
+    "track": "LLD",
+    "title": "Chess: legal moves and reversible state",
+    "level": "Intermediate",
+    "minutes": 60,
+    "summary": "Model rules without mixing board state, user input, and search.",
+    "sections": [
+      {
+        "heading": "Scope the game precisely",
+        "body": "Start with two-player standard chess on an 8 by 8 board, legal move validation, turn management, and move history. A position contains piece placement, side to move, castling rights, en-passant target, and counters needed by the chosen draw rules. Board cells alone do not completely describe the game. Separate a graphical interface and any AI search from the rules engine. Model Piece as color plus type unless polymorphism clearly simplifies the rule code. A Move contains source, destination, and optional promotion choice. Capture, castling, and en passant can be represented as interpreted move effects."
+      },
+      {
+        "heading": "Pseudo-legal versus legal moves",
+        "body": "A pseudo-legal move obeys piece movement and occupancy rules. A legal move also leaves the moving side’s king safe. Generate a candidate, apply it to a temporary position, test king attack, then commit if valid. An attack map is not always identical to legal-move generation: pawns attack diagonally even when those squares are empty, and king-safety reasoning needs careful treatment. Keep these concepts separate to avoid recursive validation loops. Represent off-board coordinates as invalid input before indexing an array. The rule engine should return a specific reason for rejection without partially modifying the live game."
+      },
+      {
+        "heading": "Worked example: a pinned rook",
+        "body": "Place the white king on e1, a white rook on e2, and a black rook on e8, with the intervening e-file squares empty. The white rook can move horizontally according to rook movement rules. Moving it from e2 to f2 exposes the white king to the black rook, so the candidate must be rejected. Moving e2 to e3 can remain legal because the rook still blocks the file, assuming no other attacks. Trace occupancy changes and the king-safety check for both moves. This example shows why validating each piece independently cannot establish legality for the whole position."
+      },
+      {
+        "heading": "History and special rules",
+        "body": "A move record should preserve enough information for undo: captured piece and square, previous castling rights, previous en-passant target, and relevant counters. En passant removes a pawn from a square other than the destination, which can expose an attack along a rank. Castling needs explicit path and attack checks, not just a king move of two squares. Promotion requires choosing a supported piece type. If the exercise omits repetition or automatic draw rules, label that scope explicitly. For C++, a value-based Position makes safe copying easy at this small scale; Python can use immutable snapshots or carefully tested make/unmake operations."
+      },
+      {
+        "heading": "Test and extend the engine",
+        "body": "Write tests for blocked sliding pieces, moving the wrong color, self-check, capture, promotion, and undo. Add at least one en-passant position that exposes king attack and a castling attempt through an attacked square. Verify that apply then undo restores every state field, not merely the visible board. Generate legal moves from a position and check that each resulting position leaves the mover’s king safe. An AI player can later call this engine through the same interface as a human player. Discuss the tradeoff between copying a small position for clarity and incremental updates for deep search performance."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "MoveRequest",
+        "RuleValidator",
+        "Position",
+        "MoveHistory"
+      ],
+      "caption": "A requested move becomes a new legal position only after movement rules and king safety are checked."
+    },
+    "questions": [
+      {
+        "q": "Why is a board array insufficient state?",
+        "a": "Turn, castling rights, en-passant eligibility, and draw counters can differ for identical piece placement."
+      },
+      {
+        "q": "What makes a pseudo-legal move illegal?",
+        "a": "It can leave or place the moving side’s king under attack, even if the piece itself moved correctly."
+      },
+      {
+        "q": "What must undo restore?",
+        "a": "Every rule-relevant field, including captured pieces, castling rights, en-passant target, and counters."
+      }
+    ],
+    "lab": "Implement move validation and reversible history for a stated subset, then add pinned-piece and special-move tests.",
+    "sources": [
+      {
+        "title": "C++ Core Guidelines: interfaces, ownership, and concurrency",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "lld-06",
+    "track": "LLD",
+    "title": "Library: copies, loans, and hold queues",
+    "level": "Intermediate",
+    "minutes": 60,
+    "summary": "Model identity and time correctly before adding search and persistence.",
+    "sections": [
+      {
+        "heading": "Distinguish concepts with different lifecycles",
+        "body": "A title is descriptive catalog data. An edition has an identifier and publication details. A physical copy is the lendable asset with its own barcode and state. A loan connects one copy to one member over time. A reservation or hold expresses a member’s claim on a title or edition, depending on policy. Combining all these into a Book class makes lost copies, multiple loans, and queue order difficult to represent. The central invariant is at most one active loan per copy. A member’s borrowing limit is another invariant and may require checking several loans together."
+      },
+      {
+        "heading": "Design operations around business rules",
+        "body": "Catalog search is a query. Borrow, renew, return, placeHold, and cancelHold are commands. A LoanPolicy decides eligibility, due date, and renewability. A HoldQueue maintains ordering and avoids duplicate active holds by the same member. The service coordinates a repository transaction so a copy cannot be borrowed twice and a member cannot exceed the limit through concurrent requests. A fine is a separate obligation rather than a mutable field on the book. Keep monetary calculations in integer minor units and retain the rule version if historical charges must be explained."
+      },
+      {
+        "heading": "Worked example: one copy and two holds",
+        "body": "An edition has one copy, currently loaned to Mira. Dev and Isha place holds in that order. On return, the copy becomes OnHold for Dev until a pickup deadline instead of immediately becoming Available. If Dev does not collect it by the deadline, the next transition assigns it to Isha. The expiration task includes the hold identifier and expected version, so an old task cannot expire a hold that has already been collected or extended. If Mira tries to renew while another member waits, the policy rejects renewal. The service returns the specific reason and preserves the original due date."
+      },
+      {
+        "heading": "Time, transactions, and state",
+        "body": "Represent due dates in the library’s policy timezone and define whether a due date means end of local day or a precise instant. Daylight-saving changes can make fixed-hour arithmetic unsuitable for calendar-day policies. An injected clock lets tests cross closing time and holidays. Copy states might be Available, Loaned, OnHold, Lost, and Maintenance. A return of a lost copy requires a defined recovery rule. Repeated return requests should report the existing result without issuing duplicate refunds or assigning the copy twice. A repository transaction should publish a hold notification through a reliable follow-up mechanism when notification delivery matters."
+      },
+      {
+        "heading": "Practice and extension criteria",
+        "body": "Implement borrow and return with two copies of the same edition. Test two members racing for the final available copy, a member reaching the borrowing limit, a duplicate return, and a hold expiring after collection. Add a fake clock and make every test complete without real waiting. Explain which fields are immutable identifiers and which are lifecycle state. Extend the model to digital licenses: several simultaneous loans may be allowed, but the capacity invariant still belongs to the lending resource. Keep the catalog search implementation replaceable, because an index should not decide whether borrowing is legally possible in the domain."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "CatalogTitle",
+        "PhysicalCopy",
+        "Loan",
+        "HoldQueue"
+      ],
+      "caption": "A title groups editions; a loan concerns one physical copy, and a hold queue allocates newly available copies."
+    },
+    "questions": [
+      {
+        "q": "Why does a loan point to a copy instead of only a title?",
+        "a": "The service must know which particular asset is unavailable, returned, damaged, or lost."
+      },
+      {
+        "q": "What prevents a stale expiration task from cancelling a collected hold?",
+        "a": "A conditional transition on hold identity and expected state/version."
+      },
+      {
+        "q": "Can a search index enforce borrowing limits?",
+        "a": "No. Search is generally a derived view; authoritative transactional state must enforce lending invariants."
+      }
+    ],
+    "lab": "Implement copy and loan lifecycles with a deterministic clock and a fair hold queue.",
+    "sources": [
+      {
+        "title": "C++ Core Guidelines: interfaces, ownership, and concurrency",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      },
+      {
+        "title": "Microsoft Architecture Center: design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "lld-07",
+    "track": "LLD",
+    "title": "Logging framework: pipelines and backpressure",
+    "level": "Intermediate",
+    "minutes": 60,
+    "summary": "Design structured events, replaceable sinks, and predictable shutdown.",
+    "sections": [
+      {
+        "heading": "Define the contract before optimizing",
+        "body": "A logger accepts a level, event name, contextual fields, and an optional exception. Specify whether return means accepted into memory or durably written; these are different promises. Start with a synchronous console sink, then add an asynchronous file sink. A LogRecord should carry the event timestamp and correlation identifier captured at the call site, because a worker may process it much later. Keep severity filtering separate from formatting and output. A structured record makes field-based searching possible and avoids parsing human prose to reconstruct important information."
+      },
+      {
+        "heading": "Composition and ownership",
+        "body": "Logger decides whether to create a record. Filters decide whether a record proceeds. Formatters convert records to a chosen representation. Sinks own output resources and define failure behavior. Compose these parts instead of creating a subclass for every combination of file, JSON, severity, and buffering. In C++, ownership of a sink can be explicit through a smart pointer, and shutdown should join workers before resources disappear. In Python, context managers and an explicit close operation make lifecycle visible. Avoid a global singleton as the only construction path; tests need independent configurations and predictable cleanup."
+      },
+      {
+        "heading": "Worked example: a slow disk",
+        "body": "Suppose producers generate 2,000 records per second and the file sink handles 1,500. An unbounded queue grows by 500 records each second. With an average 500-byte record, raw payload grows by about 250 KB per second before object overhead. A queue capped at 10,000 records fills in about 20 seconds from empty under this sustained imbalance. Choose an overflow policy deliberately: block producers, drop low-priority records with counters, or spill through a separately bounded mechanism. No queue size can solve a permanent capacity mismatch. A high-severity event can use reserved capacity, but that policy must also remain bounded."
+      },
+      {
+        "heading": "Failure handling and ordering",
+        "body": "The logging system must not recursively log its own sink failure through the same broken path. Use a small independent diagnostic channel or a failure counter. Redact sensitive fields before they enter queues and storage. Per-thread or per-request ordering may be sufficient; global ordering adds coordination and can reduce throughput. When shutdown begins, reject or redirect new records, drain accepted work within a stated deadline, and close sinks. A flush request needs an acknowledgement tied to a sequence position; an empty queue snapshot does not prove another worker has completed the disk write."
+      },
+      {
+        "heading": "Lab and review checklist",
+        "body": "Build a fake sink that blocks and fails on demand. Verify filtering occurs before expensive message formatting where possible. Test a full queue, sink exceptions, duplicate close calls, and shutdown while a producer is active. Count accepted, written, dropped, and failed records so their relationship can be checked. Explain whether crash loss is acceptable; if it is not, the design needs a durable journal and a stronger acknowledgement contract. Demonstrate adding a JSON sink without changing callers. Finally inspect one output record to confirm it contains useful context without storing credentials or arbitrary user secrets."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Logger",
+        "Filter + Formatter",
+        "BoundedQueue",
+        "Sink"
+      ],
+      "caption": "The producer creates a structured record; asynchronous sinks consume a bounded stream under an explicit overflow policy."
+    },
+    "questions": [
+      {
+        "q": "What does asynchronous logging buy?",
+        "a": "It moves output latency away from callers but introduces buffering, backpressure, shutdown, and possible crash-loss concerns."
+      },
+      {
+        "q": "Why can flush be harder than checking queue length?",
+        "a": "A worker can have removed a record while still writing it; flush needs completion tracking."
+      },
+      {
+        "q": "What should happen when a sink fails?",
+        "a": "Follow a stated bounded policy and report through an independent path rather than recursively invoking the same sink."
+      }
+    ],
+    "lab": "Build a bounded logger and prove its accounting and shutdown behavior with a deliberately slow sink.",
+    "sources": [
+      {
+        "title": "Further reading: Python logging",
+        "url": "https://docs.python.org/3/library/logging.html"
+      },
+      {
+        "title": "Further reading: Python threading",
+        "url": "https://docs.python.org/3/library/threading.html"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "lld-08",
+    "track": "LLD",
+    "title": "An in-memory cache with TTL and LRU",
+    "level": "Advanced",
+    "minutes": 60,
+    "summary": "Combine eviction, expiration, concurrency, and safe value lifetimes.",
+    "sections": [
+      {
+        "heading": "Specify observable behavior",
+        "body": "Design get, put, erase, and size for a cache with a maximum capacity and per-entry time-to-live. Decide whether capacity means entry count or estimated bytes. A miss and a cached null value must be distinguishable. Specify whether a successful get updates recency, whether replacing a value resets expiration, and whether size includes expired entries awaiting cleanup. The key invariant is agreement between the lookup map and the recency list. Every live map entry has exactly one list node, and every list node refers to one map entry. An expired entry must never be returned as a hit."
+      },
+      {
+        "heading": "Choose a simple internal model",
+        "body": "Use a hash map from key to value, expiration time, and list iterator. A doubly linked list holds keys from most to least recently used. A hit moves its node to the front. Inserting beyond capacity removes nodes from the back. Expiration can be lazy: inspect the deadline on get and discard stale entries. A periodic cleanup can reclaim untouched expired entries, but correctness must not depend on that task running on time. Use a monotonic clock for elapsed TTL within one process. A wall-clock adjustment should not resurrect a previously expired cache entry."
+      },
+      {
+        "heading": "Worked example with two independent policies",
+        "body": "Capacity is two entries and TTL is five seconds. At t=0 put A, at t=1 put B, and at t=2 get A. Recency is now A then B. At t=3 put C, which evicts B even though B has not expired. At t=5, A reaches its deadline if its TTL began at insertion and reads do not refresh it. A get must miss and remove A. C remains valid until t=8. This trace distinguishes LRU eviction from time expiration. Changing to sliding expiration is a new contract, not an implementation detail, because the t=2 read would extend A’s lifetime."
+      },
+      {
+        "heading": "Concurrency and ownership pitfalls",
+        "body": "A get mutates recency, so it is not automatically a read-only operation for locking. Start with one mutex protecting the map and list; optimize only after measuring contention. Returning a reference to an internal value can become unsafe immediately after unlocking if another thread evicts it. Return a copy, a shared immutable value, or a handle with an explicit lifetime guarantee. Never call an arbitrary loader while holding the global cache lock. A cache-aside loader can cause duplicate work on concurrent misses; per-key in-flight coordination can reduce this while allowing unrelated keys to progress."
+      },
+      {
+        "heading": "Tests and extension boundaries",
+        "body": "Use a fake clock and assert the exact eviction order after every operation. Cover zero capacity, replacement, hash collisions, simultaneous get and erase, and expiration exactly at the deadline. Check map/list agreement after randomized operations against a slow reference model. Add byte-based capacity only after defining size estimation and what happens when one value exceeds the entire budget. Explain that this cache is a local performance aid, not authoritative storage. In a distributed application, invalidation, coherence, and cross-process consistency belong to the architecture around it rather than being solved by an LRU list."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Cache API",
+        "HashMap",
+        "LRU List",
+        "Expiry Clock"
+      ],
+      "caption": "The map finds entries; the list tracks recency; the clock decides validity. One operation must update these views consistently."
+    },
+    "questions": [
+      {
+        "q": "Does get require synchronization?",
+        "a": "Yes, if it updates recency or expires entries, and it still needs a safe lifetime contract for returned values."
+      },
+      {
+        "q": "Is an expired item always the least recently used item?",
+        "a": "No. Expiration and recency are independent orders."
+      },
+      {
+        "q": "Why inject a monotonic clock?",
+        "a": "It makes TTL deterministic in tests and avoids wall-clock adjustments affecting elapsed-time expiration."
+      }
+    ],
+    "lab": "Implement TTL plus LRU in C++ or Python and compare random operation traces with a simple reference model.",
+    "sources": [
+      {
+        "title": "Further reading: C++ Core Guidelines",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      },
+      {
+        "title": "Further reading: Python threading",
+        "url": "https://docs.python.org/3/library/threading.html"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "lld-09",
+    "track": "LLD",
+    "title": "A concurrent job scheduler",
+    "level": "Advanced",
+    "minutes": 60,
+    "summary": "Make cancellation, retries, and graceful shutdown explicit.",
+    "sections": [
+      {
+        "heading": "Define job lifecycle and semantics",
+        "body": "A scheduler accepts independent tasks, runs at most N concurrently, and exposes their status. Define states such as Queued, Running, Succeeded, Failed, and Cancelled. A cancellation request is not necessarily a completed cancellation. A task already running may need cooperative cancellation and can finish before observing the request. Decide whether tasks are one-shot or retryable and whether results stay in memory. Keep scheduling policy separate from execution: FIFO, priorities, and deadlines can share the same worker lifecycle. Each task needs a stable identifier and an explicit ownership model for its captured inputs."
+      },
+      {
+        "heading": "Coordinate a bounded queue",
+        "body": "A bounded ready queue prevents submissions from consuming unlimited memory. submit can block until space, return a rejection, or accept with a deadline; document the chosen behavior. Workers wait on a condition variable using a predicate that includes both available work and shutdown. They remove one task while holding the queue lock, then release it before running user code. A task that blocks must not prevent other workers from claiming work. In C++, captured references must outlive execution; prefer values or deliberate shared ownership. In Python, avoid assuming interpreter behavior makes compound state transitions atomic."
+      },
+      {
+        "heading": "Worked example: cancellation races",
+        "body": "There are two workers and three tasks A, B, and C. A and B begin; C remains queued. Cancelling C can remove it or mark it so a worker skips it, producing Cancelled. Cancelling A sets a token observed at a documented checkpoint. If A finishes before reaching that checkpoint, its terminal state may be Succeeded, depending on the defined contract. The scheduler must not publish both results. Use one atomic or locked transition to claim the terminal outcome. A callback that reports completion is invoked outside internal locks so it can safely submit other work without deadlocking the scheduler."
+      },
+      {
+        "heading": "Retries, priority, and shutdown",
+        "body": "A retry policy needs a maximum attempt count, delay, and classification of retryable failures. Retried tasks may execute external effects more than once, so the task body needs idempotency when that matters. Keep delayed tasks in a time-ordered structure rather than sleeping an entire worker for the delay. Priority queues can starve low-priority work; aging or quotas can bound waiting. Graceful shutdown stops acceptance and completes accepted jobs. Immediate shutdown requests cancellation and returns a clear list of unfinished work. Neither mode can safely kill arbitrary code while guaranteeing consistent application state."
+      },
+      {
+        "heading": "Lab acceptance criteria",
+        "body": "Test queue saturation, a task throwing an exception, cancellation before start, cancellation during execution, and shutdown while workers are asleep. The program should terminate without busy waiting and without leaving joinable threads behind. Track accepted, started, and terminal jobs; every accepted job must have a documented eventual outcome. Add a task that tries to submit another task to expose nested-wait deadlocks when the pool is full. Compare throughput for CPU-bound and I/O-bound simulations, then explain why raising worker count can increase contention or overwhelm dependencies. A correct lifecycle is required before a faster implementation is useful."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Submitter",
+        "Ready Queue",
+        "Worker Pool",
+        "Result Store"
+      ],
+      "caption": "Submission creates a job identity; workers claim ready jobs and publish a single terminal outcome under the scheduler contract."
+    },
+    "questions": [
+      {
+        "q": "Why execute tasks outside the queue lock?",
+        "a": "User code can be slow, throw, or call back into the scheduler; holding the lock would block the whole pool or deadlock it."
+      },
+      {
+        "q": "Does cancel mean the task stopped?",
+        "a": "Only if the contract explicitly guarantees that outcome; running work commonly uses a cooperative request."
+      },
+      {
+        "q": "Why can nested task waits deadlock?",
+        "a": "Every worker can wait for child work while no worker remains available to execute those children."
+      }
+    ],
+    "lab": "Implement a bounded worker pool with cancellation and two shutdown modes; record a trace that proves every accepted task reaches a defined outcome.",
+    "sources": [
+      {
+        "title": "Further reading: Python threading",
+        "url": "https://docs.python.org/3/library/threading.html"
+      },
+      {
+        "title": "Further reading: C++ Core Guidelines",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "lld-10",
+    "track": "LLD",
+    "title": "Notification service: strategies and an outbox",
+    "level": "Intermediate",
+    "minutes": 60,
+    "summary": "Design channel adapters without losing delivery intent on failures.",
+    "sections": [
+      {
+        "heading": "Start with user-visible meaning",
+        "body": "A notification can be requested, accepted by a provider, delivered to a device, or read by a person. These are different states. Build email and push channels with templates, preferences, retries, and an audit trail. The initial contract can promise durable intent and eventual attempts, not guaranteed human attention. A Notification includes recipient identity, template version, payload, allowed channels, and a request key. Keep content generation separate from transport so a provider outage does not require changes to business logic. Store only the data needed to render the message and observe the chosen retention policy."
+      },
+      {
+        "heading": "Composition of policies and adapters",
+        "body": "A PreferencePolicy decides whether a channel is allowed. A TemplateRenderer produces a channel-specific representation. A ChannelAdapter sends that representation and returns a structured result. A RetryPolicy interprets transient versus permanent failures. The dispatcher coordinates these parts. Do not let an adapter decide product-level rules such as whether a user should receive a marketing message. Use dependency injection so tests can supply a fake provider that succeeds, times out, or rejects an address. The adapter interface should represent unknown outcomes because a lost response does not prove that a provider rejected the request."
+      },
+      {
+        "heading": "Worked example: order confirmation",
+        "body": "A transaction stores an order and an outbox event containing its notification intent. A worker claims the event, renders the confirmation, and sends it with a stable provider request identifier where supported. The provider accepts it, but the worker crashes before marking success. Another worker later retries. Deduplication at the provider or application boundary can avoid a duplicate, but a database transaction alone cannot make a remote send exactly once. If the provider lacks idempotency, document that duplicates may occur and make the message harmless to receive again. The order itself must remain committed regardless of a temporary notification failure."
+      },
+      {
+        "heading": "Ordering, preferences, and failure states",
+        "body": "Password reset messages, order confirmations, and bulk announcements need different expiration and priority rules. A stale reset message may be discarded; a financial receipt may need sustained retries and escalation. Recheck relevant preferences at send time when a queued message could outlive an opt-out. For events that must remain ordered, partition dispatch by recipient or business entity and define what happens when an early event repeatedly fails. Use bounded retries with backoff and jitter, then retain a failed record for inspection. Never retry a permanently invalid address at full speed."
+      },
+      {
+        "heading": "Lab and extension criteria",
+        "body": "Build a fake business transaction and an in-memory outbox, then inject crashes before and after provider acceptance. Count notification intent separately from send attempts. Verify the renderer does not run for a prohibited channel and that duplicate request keys do not create duplicate intent. Add a third channel without changing the order workflow. Test template-version changes, expired messages, and an adapter that returns an unknown result. Explain how a production repository would claim work with leases and fencing or conditional updates. Finally show the user-facing status vocabulary so an accepted send is not misleadingly displayed as read."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Business Action",
+        "Outbox Record",
+        "Dispatcher",
+        "Channel Adapter"
+      ],
+      "caption": "Commit notification intent with the business action; dispatchers deliver through adapters and record attempts independently."
+    },
+    "questions": [
+      {
+        "q": "Why use an outbox?",
+        "a": "It makes the decision to notify durable with the business change, preventing a crash between committing the change and recording notification intent."
+      },
+      {
+        "q": "Can an outbox guarantee exactly one external email?",
+        "a": "Not alone. The remote effect and local acknowledgement are separate; provider idempotency or duplicate-tolerant semantics are needed."
+      },
+      {
+        "q": "Why version templates?",
+        "a": "Queued messages should render predictably even when current templates change."
+      }
+    ],
+    "lab": "Simulate a crash after provider acceptance and demonstrate documented duplicate-handling behavior.",
+    "sources": [
+      {
+        "title": "Further reading: cloud design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      },
+      {
+        "title": "Further reading: C++ Core Guidelines",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "lld-11",
+    "track": "LLD",
+    "title": "Expense sharing: money, balances, and settlement",
+    "level": "Intermediate",
+    "minutes": 60,
+    "summary": "Preserve a ledger and derive balances instead of editing totals by hand.",
+    "sections": [
+      {
+        "heading": "Model the facts, not only the display",
+        "body": "An expense records who paid, the amount, currency, participants, and the allocation rule. A settlement records a transfer that reduces obligations. A balance is derived from those facts; it should not be the only stored truth. Use integer minor units for money and disallow cross-currency arithmetic unless an explicit conversion event and rate are recorded. Stable participant identifiers matter because display names can change. The key invariant is conservation: allocated shares equal the expense amount, and the net balances across a single-currency group sum to zero. Editing or deleting an expense requires an explicit correction policy."
+      },
+      {
+        "heading": "Allocate shares with predictable rounding",
+        "body": "Support equal, exact, and percentage splits through a SplitPolicy contract. Validate that exact shares sum to the total and percentage weights are nonnegative with a valid total. For an equal split that does not divide evenly, distribute the remaining minor units using a deterministic order or a documented fairness rule. Avoid independent rounding that creates or loses money. A paid expense can create a credit for the payer and debits for all participants; the payer may also owe their own share. Keep the expense calculation pure so it can be tested without a database."
+      },
+      {
+        "heading": "Worked example: a meal and a settlement",
+        "body": "Asha pays 1,000 minor units for a meal shared equally by Asha, Ben, and Chen. A deterministic allocation gives Asha 334, Ben 333, and Chen 333. Net balances become Asha plus 666, Ben minus 333, and Chen minus 333. Ben transfers 333 to Asha, so their balances become Asha plus 333, Ben zero, and Chen minus 333. The group total remains zero. If the expense was accidentally entered as 1,000 instead of 1,200, record a correction or replace it through an audited operation; do not merely alter Asha’s balance, which would destroy the explanation of the ledger."
+      },
+      {
+        "heading": "Settlement algorithms and concurrency",
+        "body": "A simple settlement suggestion pairs a debtor with a creditor and transfers the smaller outstanding magnitude, repeating until balances reach zero. It produces a valid set of transfers but does not guarantee the minimum possible number of transfers in all cases. State that distinction instead of claiming optimality from a greedy implementation. A recorded settlement must have a unique request identifier so a retry does not double-count payment. Concurrent edits need version checks or transactions. Balance caches can be updated for speed, but they should be rebuildable from authoritative entries and verified against the conservation invariant."
+      },
+      {
+        "heading": "Lab and review criteria",
+        "body": "Implement all three split modes and a settlement suggestion in C++ or Python. Test zero and negative amounts according to your contract, one participant, nondivisible totals, invalid percentages, duplicate members, and different currencies. Generate random valid expenses and assert that shares sum correctly and group balances sum to zero after every event. Add an audit history showing why each balance exists. Explain whether an expense may be edited after settlements have occurred and how that changes obligations. Finally distinguish recording that a transfer happened from actually moving money through a payment provider; the latter introduces a separate integration and reconciliation problem."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Expense",
+        "SplitPolicy",
+        "Ledger Entries",
+        "Settlement"
+      ],
+      "caption": "Expenses create balanced ledger entries; balances and suggested settlements are derived views over that history."
+    },
+    "questions": [
+      {
+        "q": "Why use a ledger instead of mutable balances alone?",
+        "a": "The history explains and rebuilds balances, supports corrections, and makes invariants auditable."
+      },
+      {
+        "q": "Does greedy debtor-creditor matching minimize transfers?",
+        "a": "It yields valid settlement transfers but is not a general proof of minimum transfer count."
+      },
+      {
+        "q": "What must be true after an equal split?",
+        "a": "The integer shares must sum exactly to the original amount under a documented remainder policy."
+      }
+    ],
+    "lab": "Build a ledger, deterministic split policies, and invariant tests for random expense and settlement sequences.",
+    "sources": [
+      {
+        "title": "Further reading: C++ Core Guidelines",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      },
+      {
+        "title": "Further reading: cloud design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      }
+    ],
+    "updated": "2026-10-14"
+  },
+  {
+    "id": "hld-01",
+    "track": "HLD",
+    "title": "Ticket booking: capacity and hot inventory",
+    "level": "Foundation",
+    "minutes": 75,
+    "summary": "Turn rough estimates into a design that preserves scarce inventory.",
+    "sections": [
+      {
+        "heading": "Requirements before boxes",
+        "body": "Design reserved-seat ticket booking for a popular event. Users browse seats, hold a chosen seat briefly, pay, and receive confirmation. Browsing may show slightly stale availability, but two confirmed bookings must never own the same seat. State the allowed hold duration, payment deadline, and cancellation behavior. Separate a product requirement from an availability target: keeping browsing online does not justify overselling inventory. Start with one authoritative inventory shard per event or section, then justify partitioning only if measured throughput requires it. External payment is a separate system with uncertain response times."
+      },
+      {
+        "heading": "A worked capacity estimate",
+        "body": "Assume 100,000 people arrive over ten minutes, each making six browse requests and one hold attempt. Average browse traffic is 1,000 requests per second, and average hold traffic is about 167 per second. If the opening minute is ten times busier than the average, plan a scenario near 10,000 browse requests per second and 1,670 hold attempts per second. These are illustrative assumptions, not measurements. A cached seat map can absorb browsing, while the few thousand seats remain a highly contended write set. Adding web servers cannot eliminate contention for the same seat. An admission queue can smooth demand and give users a clearer waiting experience."
+      },
+      {
+        "heading": "Data model and critical path",
+        "body": "Store event, seat, booking, hold identifier, expiry, and version. A conditional write changes an Available seat to Held only if its current state permits it. The hold response returns a token used by payment and confirmation. Confirmation checks that the token still owns the seat and that the chosen deadline policy allows commitment. Hold expiration is another conditional transition using the same token, so a stale expiration job cannot release a newly booked seat. Index event and seat identifiers for direct lookup. A seat-map cache is a derived view and can be updated asynchronously without controlling the invariant."
+      },
+      {
+        "heading": "Payment timeout and recovery",
+        "body": "The provider can accept payment while the response is lost. Retrying blindly with a new payment identity can charge twice. Reuse a stable payment request key and reconcile unknown outcomes. Decide what happens if a hold expires before a delayed payment succeeds: refund, reacquire when possible, or place the booking in manual review. No application timeout can retroactively cancel a payment already accepted elsewhere. An outbox records follow-up work with the booking state. Keep an audit trail of state changes and provider references so customer support can explain the outcome without relying on scattered logs."
+      },
+      {
+        "heading": "Design exercise and evaluation",
+        "body": "Draw the success path and a race between confirmation and expiry. Estimate storage for booking history, but prioritize hot-write throughput and user wait time because they drive the design. Test two clients competing for the same seat and thousands selecting a popular section. Measure hold success rate, time in the waiting room, payment-unknown count, and expired inventory recovery. Explain the failure policy when the authoritative store is unavailable. Then change the requirement to general admission: an atomic capacity counter can replace individual seats, but contention and exactly which operation owns the capacity still require analysis."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Waiting Room",
+        "Booking API",
+        "Inventory Store",
+        "Payment Worker"
+      ],
+      "caption": "Admission limits contention; inventory is held atomically; payment confirmation competes safely with hold expiration."
+    },
+    "questions": [
+      {
+        "q": "Why can the seat map be stale while booking remains correct?",
+        "a": "The map is advisory; the atomic authoritative hold operation decides ownership."
+      },
+      {
+        "q": "What does scaling API servers fail to solve?",
+        "a": "Contention for the same scarce inventory and limits of the authoritative write path."
+      },
+      {
+        "q": "What prevents a delayed expiry from releasing a sold seat?",
+        "a": "A conditional transition that checks the hold identity and current state."
+      }
+    ],
+    "lab": "Produce a capacity sheet, seat state machine, and failure sequence for a payment succeeding after its hold expires.",
+    "sources": [
+      {
+        "title": "Further reading: PostgreSQL explicit locking",
+        "url": "https://www.postgresql.org/docs/current/explicit-locking.html"
+      },
+      {
+        "title": "Further reading: Stripe idempotent requests",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      }
+    ],
+    "updated": "2026-10-15"
+  },
+  {
+    "id": "hld-02",
+    "track": "HLD",
+    "title": "URL shortener: keys, redirects, and abuse",
+    "level": "Intermediate",
+    "minutes": 75,
+    "summary": "Design a read-heavy service and explain each identifier tradeoff.",
+    "sections": [
+      {
+        "heading": "Scope and access patterns",
+        "body": "Create a short URL for an HTTP or HTTPS destination, resolve it quickly, support expiration, and optionally allow an owner to disable it. Define whether links are editable and whether analytics are approximate or billing-grade. Creation and redirect have different traffic patterns and availability needs. The core mapping contains short key, destination, owner, creation time, expiry, and status. A short key should be unique in its namespace. A short URL is not automatically secret or access controlled; anyone who obtains it may be able to resolve it unless authentication is explicitly required."
+      },
+      {
+        "heading": "Worked identifier and capacity calculation",
+        "body": "A seven-character base-62 key has 62 to the seventh power, about 3.52 trillion possible values. That does not mean randomly generating that many keys is collision-free: birthday effects appear much earlier, so insert under a uniqueness constraint and retry collisions. A sequence encoded in base-62 avoids random collision but reveals enumeration and needs an allocation strategy. Assume 10 million new links per month with 500 bytes of raw mapping data each: that is about 5 GB monthly before indexes, replication, and metadata. Assume 1 billion monthly redirects over 30 days: the average is about 386 per second, while peaks and viral keys may be much higher."
+      },
+      {
+        "heading": "Read and write architecture",
+        "body": "Creation validates scheme and length, allocates a key, persists the mapping, and returns the short URL only after the chosen durability condition succeeds. Redirect first checks a bounded cache, then the mapping store. Choose redirect status and cache headers according to whether the destination can change; long-lived client caching can make later edits difficult to observe. Cache negative lookups briefly to reduce repeated misses, but avoid hiding a newly created key for an excessive interval. Store click events asynchronously so an analytics outage does not block redirects, unless an explicit business requirement demands otherwise."
+      },
+      {
+        "heading": "Hot keys and invalidation",
+        "body": "A celebrity link can dominate traffic even when average load is modest. Replicated caches and edge caching help, but an expired or disabled link needs a defined maximum staleness window. A cache deletion alone can race with a reader repopulating an old value, so use versions or a suitable write/invalidation protocol when stronger freshness is required. Shard by key for broad distribution; do not shard by a small set of owners if one owner can dominate traffic. Keep abuse controls on creation and resolution, including rate limits and a reporting mechanism. Destination metadata fetches require a carefully controlled service to avoid making the server fetch arbitrary internal addresses."
+      },
+      {
+        "heading": "Interview lab and failure tests",
+        "body": "Draw create and redirect paths separately. Compare random keys, centrally allocated sequences, and preallocated identifier ranges using collision behavior, coordination, and predictability. Simulate cache failure, a hot key, duplicate creation requests, and disabling a cached link. State how long the old destination might remain visible. Calculate storage for a year with an explicit replication multiplier and account for analytics separately. End with metrics: redirect latency, cache hit rate, failed lookups, create failures, and disabled-link propagation delay. Explain one simple initial design and the measured condition that would justify its first scaling change."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Client",
+        "Redirect Service",
+        "Cache",
+        "URL Store"
+      ],
+      "caption": "A redirect looks up a short key in cache, falls back to durable mapping storage, and records analytics asynchronously."
+    },
+    "questions": [
+      {
+        "q": "Does a large random keyspace remove the need for uniqueness checks?",
+        "a": "No. Random collisions remain possible; enforce uniqueness and handle a collision explicitly."
+      },
+      {
+        "q": "Why keep analytics off the redirect critical path?",
+        "a": "Redirect availability and latency should not depend on an unrelated analytics backlog unless required by the product contract."
+      },
+      {
+        "q": "What is the risk of permanent redirect caching for editable links?",
+        "a": "Clients can keep using an old destination without consulting the service again."
+      }
+    ],
+    "lab": "Design two identifier strategies and evaluate a viral-link traffic burst plus a cached-link takedown.",
+    "sources": [
+      {
+        "title": "Further reading: Microsoft cloud design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      },
+      {
+        "title": "Further reading: Google Site Reliability Engineering",
+        "url": "https://sre.google/sre-book/table-of-contents/"
+      }
+    ],
+    "updated": "2026-10-15"
+  },
+  {
+    "id": "hld-03",
+    "track": "HLD",
+    "title": "Social feed: fanout and ranking boundaries",
+    "level": "Intermediate",
+    "minutes": 75,
+    "summary": "Compare pushing timeline entries with assembling feeds on demand.",
+    "sections": [
+      {
+        "heading": "Clarify the product",
+        "body": "Build a following feed with posts, follows, pagination, deletions, and basic ranking. Decide whether new posts must appear immediately and whether the feed is chronological or personalized. A feed is a derived view over posts and relationships, so the system can rebuild it if its construction pipeline fails. The authoritative post store owns content and visibility. A timeline stores references and ordering metadata, avoiding copies of large media. Permission checks remain necessary when materializing or reading derived timelines because following relationships, blocks, and private-account settings can change after fanout."
+      },
+      {
+        "heading": "Push, pull, and a numerical example",
+        "body": "Fanout on write pushes a post reference into each follower’s timeline. Fanout on read retrieves recent posts from followed authors when the user asks for a feed. If an ordinary author has 200 followers and posts twice daily, pushing roughly 400 references is modest. An author with 20 million followers creates 20 million timeline writes per post, including many for inactive readers. Pulling that author’s latest posts during active reads may cost less. A hybrid design can use measured fanout cost, activity, and read volume to choose a strategy. The threshold is a system parameter, not a universal celebrity follower count."
+      },
+      {
+        "heading": "Publish and read paths",
+        "body": "Publishing stores the post and durable fanout intent. Workers partition recipient sets and write timeline references idempotently using post and recipient identity. On read, the feed service loads a page of materialized candidates, merges recent posts from pull-mode authors, filters inaccessible or deleted content, and ranks the remaining candidates. A stable cursor should encode enough ordering information to avoid relying on a mutable offset. For a chronological feed, a tuple such as timestamp and unique identifier breaks ties. Personalized ranking needs a separate explanation of how page boundaries behave when scores change between requests."
+      },
+      {
+        "heading": "Failure modes and consistency",
+        "body": "A retrying worker can duplicate timeline entries unless the storage key or write operation is idempotent. A slow fanout pipeline delays freshness, so track queue age in addition to queue length. Deleting a post requires both removing derived references eventually and rejecting access to the authoritative content promptly. A privacy change may require invalidating caches and rechecking permissions at read time. Very large follow graphs create skew in both storage and processing. Backpressure, workload isolation, and bounded fanout batches prevent one account from monopolizing the system. A chronological fallback can keep the product usable when ranking is unavailable."
+      },
+      {
+        "heading": "Design lab and evaluation",
+        "body": "Estimate daily post writes, fanout references, active readers, and feed read requests under stated assumptions. Draw a normal publication and a high-fanout publication. Simulate duplicate events, a fanout worker crash, a blocked author, and deletion between the first and second page. Compare fanout strategies by total work, freshness, and storage rather than simply calling one scalable. Define success metrics such as feed latency, eligible-post freshness, duplicate rate, and permission violations. If adding machine learning ranking, separate candidate retrieval quality from ranking quality and preserve a deterministic baseline for debugging."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Post Store",
+        "Fanout Queue",
+        "Timeline Store",
+        "Feed Reader"
+      ],
+      "caption": "Publishing fans out references for ordinary accounts; a reader can merge high-fanout authors at read time before ranking."
+    },
+    "questions": [
+      {
+        "q": "Why store references rather than full post copies in timelines?",
+        "a": "It reduces duplicated content and keeps authoritative visibility and content updates centralized."
+      },
+      {
+        "q": "What makes offset pagination fragile?",
+        "a": "New or removed items shift offsets, potentially causing skipped or repeated results."
+      },
+      {
+        "q": "Can deleting a timeline reference alone enforce privacy?",
+        "a": "No. Content access and cached copies also need the relevant authorization and invalidation rules."
+      }
+    ],
+    "lab": "Compare push, pull, and hybrid costs for one small account and one 20-million-follower account.",
+    "sources": [
+      {
+        "title": "Further reading: Microsoft cloud design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      },
+      {
+        "title": "Further reading: Google Site Reliability Engineering",
+        "url": "https://sre.google/sre-book/table-of-contents/"
+      }
+    ],
+    "updated": "2026-10-15"
+  },
+  {
+    "id": "hld-04",
+    "track": "HLD",
+    "title": "Messenger: ordering, delivery, and reconnect",
+    "level": "Intermediate",
+    "minutes": 75,
+    "summary": "Keep durable messages separate from transient connection state.",
+    "sections": [
+      {
+        "heading": "Define the guarantees",
+        "body": "Design one-to-one and small-group messaging with history, multi-device access, and online delivery. Distinguish accepted by the service, delivered to a device, and read by a user. A network connection is transient; message history must survive gateway restarts. Choose an ordering scope, usually per conversation, instead of promising a global order across all messages. Define membership changes, retention, attachment handling, and whether end-to-end encryption is required. Encryption changes search, moderation, recovery, and key-management design, so it cannot be added as an unexplained lock icon at the end."
+      },
+      {
+        "heading": "Identifiers and durable ordering",
+        "body": "A client generates a message request identifier that is reused on retry. The service deduplicates within the sender’s agreed scope and assigns a per-conversation sequence or equivalent ordering token when accepting the message. Store the message durably before acknowledging the selected persistence guarantee. A conversation record includes membership and version information. Connection gateways map online devices to sessions, while a separate presence mechanism uses heartbeats and expiration. Presence is approximate; an apparently online device may disappear before delivery. The durable log and per-device cursor make that uncertainty recoverable."
+      },
+      {
+        "heading": "Worked reconnect sequence",
+        "body": "A phone sends message M with request key K. The service stores it as conversation sequence 41, but the acknowledgement is lost. The phone retries K and receives the existing result for 41 rather than creating sequence 42. A recipient sees 41, disconnects, and later reconnects with its last acknowledged cursor. The server returns the next messages after that cursor. If the recipient had rendered 41 but failed to acknowledge it, 41 may be delivered again and should be deduplicated locally. This is a practical at-least-once transport with stable identities, not a magical exactly-once network."
+      },
+      {
+        "heading": "Scaling and failure boundaries",
+        "body": "Shard conversations so order-related operations for one conversation share a coordination boundary. A very large group can overwhelm a single partition; that requires a different design or narrower ordering promises. Store attachments in object storage and messages as references with access checks. Fanout workers can batch device deliveries, while offline devices catch up from durable history. Use bounded outbound buffers so a slow client cannot consume unlimited gateway memory. A region failover must define whether accepted messages can be lost and whether the new writer can safely assign ordering tokens without split-brain ownership."
+      },
+      {
+        "heading": "Lab and metrics",
+        "body": "Draw the send acknowledgement, recipient acknowledgement, and read receipt as separate events. Simulate lost responses, duplicate retries, reconnect with an old cursor, and two sender devices writing at once. Decide how edits and deletions appear in history: new events can be easier to reconcile than invisible mutation. Measure acceptance latency, online delivery latency, reconnect catch-up time, and oldest undelivered work. State how access is checked when a user is removed from a group. Finish by explaining which parts may be eventually consistent, such as presence, and which promises depend on authoritative conversation state."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Sender Gateway",
+        "Conversation Log",
+        "Delivery Worker",
+        "Recipient Gateway"
+      ],
+      "caption": "The durable conversation log acknowledges acceptance; delivery routes to online devices, while reconnect reads from stored cursors."
+    },
+    "questions": [
+      {
+        "q": "Why does a sender need a stable request key?",
+        "a": "A response can be lost after persistence; the key lets retries recover the existing message instead of creating a duplicate."
+      },
+      {
+        "q": "Does delivered mean read?",
+        "a": "No. Device delivery and user read acknowledgement are separate events."
+      },
+      {
+        "q": "Why avoid global message ordering?",
+        "a": "It adds coordination across unrelated conversations without usually improving the user experience."
+      }
+    ],
+    "lab": "Trace send, timeout, retry, delivery, and reconnect for one message and state every acknowledgement guarantee.",
+    "sources": [
+      {
+        "title": "Further reading: Microsoft cloud design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      },
+      {
+        "title": "Further reading: Google Site Reliability Engineering",
+        "url": "https://sre.google/sre-book/table-of-contents/"
+      }
+    ],
+    "updated": "2026-10-15"
+  },
+  {
+    "id": "hld-05",
+    "track": "HLD",
+    "title": "Payments: ledger, idempotency, and reconciliation",
+    "level": "Advanced",
+    "minutes": 75,
+    "summary": "Treat unknown outcomes as first-class states and preserve financial facts.",
+    "sections": [
+      {
+        "heading": "Establish the domain boundary",
+        "body": "Design a payment service for an order system. It creates payment intents, submits charges through a provider, records outcomes, and handles refunds. The exercise concerns software architecture, not advice about payment regulation or operating a financial institution. Distinguish an order, an intent, a provider attempt, and a ledger entry. A failed HTTP request is not necessarily a failed charge. The API should expose Pending or Unknown when the outcome is uncertain and let clients retrieve status. Amount, currency, customer reference, and request identity belong to the immutable operation contract."
+      },
+      {
+        "heading": "Idempotency as stored semantics",
+        "body": "On a first request, reserve the idempotency key with a fingerprint of the intended operation. A retry with the same key and parameters returns the recorded operation or continues its recovery path. Reusing the key with different parameters is rejected. Concurrent first requests require an atomic uniqueness boundary; an in-memory map per server is insufficient. Scope and retention of keys must be documented. The provider’s own idempotency mechanism is a separate layer with its own rules. Store provider references and reuse the appropriate key so application retries and provider retries refer to the same intended effect."
+      },
+      {
+        "heading": "Worked example: a lost successful response",
+        "body": "An order for 2,500 minor units creates intent P and provider attempt A. The provider charges successfully, but the connection times out before the service sees the response. Mark A as Unknown or PendingVerification, not Failed. A client retry retrieves P. A webhook or provider-status query later confirms success; a conditional transition records the outcome once. The ledger then contains the corresponding balanced entries under the chosen accounting model. If a webhook is delivered twice, its event identity or already-applied transition prevents duplicate posting. If a refund is later needed, it creates another referenced operation rather than erasing the original charge."
+      },
+      {
+        "heading": "Ledger and reconciliation",
+        "body": "An append-only ledger makes corrections explicit and allows balances to be rebuilt. Enforce balanced debits and credits per transaction under a documented chart of accounts. Avoid mixing currencies in one arithmetic balance. A reconciliation process compares provider settlement records with internal intents and ledger entries, identifying missing, duplicated, or mismatched operations. Webhooks can arrive late or out of order, so their arrival order must not blindly override a newer authoritative state. An outbox can reliably publish payment status to the order service, while an inbox or deduplication record protects consumers from repeated events."
+      },
+      {
+        "heading": "Failure lab and design review",
+        "body": "Build a state transition table and a recovery owner for every nonterminal state. Inject failures before provider submission, after provider acceptance, before ledger posting, and after posting but before response. Verify that retrying does not create a new logical charge. Define alerts for old pending intents, reconciliation differences, and repeated provider failures. Separate availability from correctness: accepting a request into a durable pending state can preserve intent during a provider outage, but it does not mean payment succeeded. Explain retention, access controls, and auditability at a high level, then identify integration-specific requirements that must be checked against the chosen provider."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Payment API",
+        "Payment Intent",
+        "Provider Adapter",
+        "Ledger + Reconciler"
+      ],
+      "caption": "A durable intent identifies the operation; provider outcomes are reconciled into an auditable ledger without inventing certainty after timeouts."
+    },
+    "questions": [
+      {
+        "q": "Why is a timeout not proof of failure?",
+        "a": "The remote provider may have committed the operation before the response was lost."
+      },
+      {
+        "q": "What happens if the same idempotency key is reused for another amount?",
+        "a": "Reject the mismatch; a key names one operation contract."
+      },
+      {
+        "q": "Why reconcile if webhooks exist?",
+        "a": "Webhooks can be delayed, duplicated, or missed; comparison with authoritative provider records detects unresolved differences."
+      }
+    ],
+    "lab": "Design the payment state machine and recover a successful charge whose response was lost without charging again.",
+    "sources": [
+      {
+        "title": "Further reading: Stripe idempotent requests",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      },
+      {
+        "title": "Further reading: Microsoft cloud design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      }
+    ],
+    "updated": "2026-10-15"
+  },
+  {
+    "id": "hld-06",
+    "track": "HLD",
+    "title": "Search and autocomplete: indexing versus serving",
+    "level": "Intermediate",
+    "minutes": 75,
+    "summary": "Separate source documents, index freshness, and query relevance.",
+    "sections": [
+      {
+        "heading": "Clarify two different products",
+        "body": "Full-text search finds documents matching words and relevance criteria. Autocomplete suggests completions for a prefix, often from a smaller vocabulary of queries or entities. They can share data but need different indexes and latency targets. Specify corpus size, languages, update rate, permissions, and whether exact keyword matches or semantic matches matter. The source document store remains authoritative, while indexes are rebuildable views. A result needs a document identifier, score, snippet, and visibility decision. Do not treat an index hit as permission to reveal a document that the user can no longer access."
+      },
+      {
+        "heading": "Index construction and query plan",
+        "body": "An inverted index maps terms to postings containing document identifiers and useful statistics. Tokenization, normalization, and language rules define what counts as a term. At query time, retrieve candidate postings, apply filters, score candidates, and merge the top results. Autocomplete can use a trie, finite-state structure, or sorted prefix index with precomputed popular suggestions. A semantic retrieval path adds embeddings and approximate nearest-neighbor search, but it still needs filtering and evaluation. Version the indexing pipeline so a change in tokenization does not silently mix incompatible representations."
+      },
+      {
+        "heading": "Worked example: document and prefix updates",
+        "body": "Three documents contain the phrases red bicycle, blue bicycle, and red helmet. The posting for red refers to documents one and three; bicycle refers to one and two. An AND query intersects them and returns document one. A prefix query bi might suggest bicycle from the suggestion vocabulary. Now document one is deleted. A tombstone or versioned update must remove it from serving results even if one shard is behind. If the same document update is retried, its version prevents an older representation from replacing a newer one. This small example exposes freshness and ordering problems before distributing the index."
+      },
+      {
+        "heading": "Scale, ranking, and operational tradeoffs",
+        "body": "Partition by document identifier to spread storage and update load, then scatter queries across shards; alternatively, term partitioning changes the query-routing and hot-term tradeoffs. Replicas increase read capacity and availability but can differ in freshness. Fetch more than the final page size from shards when later filtering may remove candidates. Overfetching is not a universal correctness guarantee for exact global ranking, so explain your merge and scoring assumptions. Rebuilding an index can use a new version followed by an atomic serving switch. Keep the old version briefly for rollback and account for the temporary storage increase."
+      },
+      {
+        "heading": "Lab and evaluation",
+        "body": "Build a small inverted index and prefix suggester, then test case normalization, repeated terms, empty queries, punctuation, and document deletion. Create a relevance set with expected useful results instead of measuring only latency. Report recall at K or another chosen relevance metric alongside p95 latency and index freshness. Simulate one missing shard and state whether the response is partial, retried, or failed. For private documents, test a permission revocation that occurs after indexing. Explain the effect of a popular query on cache reuse and why caching results must include the relevant access context."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Document Changes",
+        "Index Builder",
+        "Search Shards",
+        "Query Aggregator"
+      ],
+      "caption": "Document changes build a derived index; queries scatter to relevant shards and merge scored results with stable document identities."
+    },
+    "questions": [
+      {
+        "q": "Why is the search index usually derived state?",
+        "a": "It transforms authoritative documents for efficient retrieval and should be rebuildable when indexing logic changes."
+      },
+      {
+        "q": "Why are search and autocomplete distinct?",
+        "a": "One retrieves and ranks documents; the other predicts likely completions from a prefix and often uses a different vocabulary and index."
+      },
+      {
+        "q": "What makes deletion difficult?",
+        "a": "Derived copies, shard lag, caches, and reordered updates can continue exposing stale results unless versions and visibility rules are enforced."
+      }
+    ],
+    "lab": "Implement a tiny inverted index and autocomplete structure, then design a versioned zero-downtime rebuild.",
+    "sources": [
+      {
+        "title": "Further reading: Microsoft cloud design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      },
+      {
+        "title": "Further reading: Google Site Reliability Engineering",
+        "url": "https://sre.google/sre-book/table-of-contents/"
+      }
+    ],
+    "updated": "2026-10-15"
+  },
+  {
+    "id": "hld-07",
+    "track": "HLD",
+    "title": "Video platform: upload, transcode, and playback",
+    "level": "Intermediate",
+    "minutes": 75,
+    "summary": "Design an asynchronous media pipeline and a bandwidth-heavy read path.",
+    "sections": [
+      {
+        "heading": "Separate control and media traffic",
+        "body": "Design uploaded video, processing status, playback, and deletion. The API manages metadata and authorization; bulk video bytes should use a storage and delivery path suited to large objects. Clarify maximum upload size, supported formats, target playback devices, and whether live streaming is in scope. Begin with video on demand because live production introduces different latency and buffering constraints. A video can be Uploading, Processing, Ready, Failed, or Deleted. Upload completion means the original bytes are present, not that every playback rendition is ready or safe to publish."
+      },
+      {
+        "heading": "Upload and processing architecture",
+        "body": "The control service creates an upload session and scoped access to store chunks. The client resumes interrupted uploads and verifies completion using the storage system’s supported integrity mechanism. A completed upload produces a durable processing event. Workers inspect the media, generate thumbnails and several encoded renditions, and place outputs under versioned object names. Each processing job identifies input version and encoding profile so a retry can reuse or replace its own outputs safely. Publish a manifest only after the required objects exist. Failed optional renditions should not necessarily block all playback if the product allows a smaller set."
+      },
+      {
+        "heading": "Worked bandwidth estimate",
+        "body": "Assume 10,000 simultaneous viewers each receive an average 4 megabits per second. Playback traffic is about 40 gigabits per second, or 5 gigabytes per second before protocol overhead. At that rate, a full hour transfers roughly 18 TB using decimal units. This is why serving every byte from ordinary application servers is a poor default. A CDN reduces origin traffic when viewers request reusable segments. If segment requests achieve a 95 percent byte hit rate under the assumed workload, the origin still supplies about 2 gigabits per second on average. Cold content and bursts require separate scenarios."
+      },
+      {
+        "heading": "Playback, quality, and failure handling",
+        "body": "A player reads the manifest and selects renditions based on available bandwidth and playback buffer. Segment duration affects startup latency, request overhead, and adaptation speed. Encode outputs immutably so caches can reuse them safely, while a small manifest points to the current version. Authorize private media with bounded credentials and a clear revocation policy. CDN caches complicate immediate takedown, so define propagation expectations. Queue backpressure prevents a burst of uploads from exhausting workers; priorities can favor short interactive uploads while retaining fairness. A poisoned file should fail one job without crashing the shared worker fleet."
+      },
+      {
+        "heading": "Lab and design review",
+        "body": "Draw upload, processing, and playback as three separate paths. Calculate storage for originals and renditions under an explicit average duration and bitrate, including retention. Simulate interrupted upload, duplicate completion events, a transcoder crash, one missing rendition, and deletion during processing. The final publication step must not expose a broken manifest. Measure upload success, time until playable, playback startup, rebuffering ratio, and origin bandwidth. Explain how the design handles a newly viral video with a cold cache. Finish by identifying which parts are vendor-specific integration details and which invariants remain the same across storage and CDN providers."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Upload Storage",
+        "Transcode Queue",
+        "Media Variants",
+        "CDN + Player"
+      ],
+      "caption": "Uploads become versioned processing jobs; ready renditions are published through a manifest and served near viewers."
+    },
+    "questions": [
+      {
+        "q": "Why publish the manifest after required segments exist?",
+        "a": "A visible manifest must not direct players to media objects that are still missing."
+      },
+      {
+        "q": "Why use immutable rendition names?",
+        "a": "They make retries, cache reuse, and version changes predictable without ambiguous overwrites."
+      },
+      {
+        "q": "What is the main difference between control and media traffic?",
+        "a": "Control requests are small metadata and authorization operations; media delivery moves large amounts of reusable byte content."
+      }
+    ],
+    "lab": "Estimate one hour of playback traffic, then design upload recovery and atomic publication of a playable video.",
+    "sources": [
+      {
+        "title": "Further reading: Microsoft cloud design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      },
+      {
+        "title": "Further reading: Google Site Reliability Engineering",
+        "url": "https://sre.google/sre-book/table-of-contents/"
+      }
+    ],
+    "updated": "2026-10-15"
+  },
+  {
+    "id": "hld-08",
+    "track": "HLD",
+    "title": "Distributed rate limiter: quotas and fairness",
+    "level": "Advanced",
+    "minutes": 75,
+    "summary": "Choose between exact global enforcement and bounded local autonomy.",
+    "sections": [
+      {
+        "heading": "Define the policy and failure behavior",
+        "body": "A rate limiter decides whether a unit of work may proceed. The key may be a user, API credential, tenant, endpoint, or a combination. Specify what is counted: requests, bytes, tokens, or weighted cost. Authentication and business authorization remain separate checks. Decide whether a quota is global, per region, or per server, and how much temporary overshoot is acceptable. A limiter protecting an expensive dependency may need conservative failure behavior, while a low-risk public read endpoint may choose availability. There is no universally correct fail-open or fail-closed setting."
+      },
+      {
+        "heading": "Algorithms and a worked token bucket",
+        "body": "A fixed window is simple but can admit a double burst around a boundary. A sliding log is precise for its window but stores individual events. A token bucket permits bursts while bounding a long-run refill rate. Suppose capacity is 20 tokens and refill is 5 tokens per second. Starting full, 20 unit-cost requests can run immediately. Another request at the same instant is rejected; after 200 milliseconds, one token is available if no other request consumed it. Compute refill from elapsed time, cap at capacity, and subtract cost in one atomic operation. Concurrent read-then-write updates would allow multiple gateways to spend the same tokens."
+      },
+      {
+        "heading": "Central state versus distributed budgets",
+        "body": "A shared state service can serialize updates for a key and simplify global limits, but adds network latency and becomes a dependency. Partition keys across owners to distribute work, while recognizing that one hot tenant can still overload one key. Regional budgets reduce cross-region coordination: allocate each region part of the total quota and periodically rebalance. The total outstanding allocation must respect the desired bound, including allocations held by failed or disconnected regions. Local fallback buckets provide resilience but can multiply allowed traffic if every gateway independently assumes it owns the full global budget."
+      },
+      {
+        "heading": "Clock, identity, and adversarial inputs",
+        "body": "Use server-controlled time for refill decisions and avoid trusting client timestamps. Clock differences matter if multiple writers update the same logical bucket, so use a single ownership boundary or an algorithm designed for that environment. Limit the lifetime and cardinality of stored keys; an attacker can otherwise create many unique identities and exhaust memory. IP-based limits can unfairly group users behind shared networks and can be evaded by distributed sources. Layer limits at appropriate scopes rather than treating one key as universal. Rejected requests should include useful retry information without promising a reserved slot in the future."
+      },
+      {
+        "heading": "Lab and operational review",
+        "body": "Implement a token bucket against a deterministic clock and compare concurrent decisions with a serial reference trace. Test a boundary burst, variable request cost, idle refill, clock anomalies, state-store failure, and a hot key. Calculate worst-case overshoot when five gateways each use a local allowance of ten requests during a shared-store outage. Distinguish that bound from the normal configured quota. Track allowed and denied work, decision latency, per-tenant fairness, and fallback activation. Explain how configuration updates are versioned so a quota change does not leave some gateways applying an obsolete policy indefinitely."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "API Gateway",
+        "Policy Lookup",
+        "Atomic Bucket",
+        "Decision"
+      ],
+      "caption": "A gateway selects the quota key and policy, updates bucket state atomically, and returns an admission decision with retry guidance."
+    },
+    "questions": [
+      {
+        "q": "Why must refill and consumption be atomic?",
+        "a": "Otherwise concurrent requests can each observe and spend the same available tokens."
+      },
+      {
+        "q": "Does a local limiter enforce a global quota?",
+        "a": "Only with a budget allocation or coordination scheme; independent full quotas multiply the allowed total."
+      },
+      {
+        "q": "Why can key cardinality become a problem?",
+        "a": "Every distinct key consumes state, so unbounded client-controlled identities can exhaust the limiter."
+      }
+    ],
+    "lab": "Implement a token bucket and calculate the overshoot bound of a five-gateway fallback policy.",
+    "sources": [
+      {
+        "title": "Further reading: Microsoft rate limiting pattern",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/rate-limiting-pattern"
+      },
+      {
+        "title": "Further reading: Google Site Reliability Engineering",
+        "url": "https://sre.google/sre-book/table-of-contents/"
+      }
+    ],
+    "updated": "2026-10-15"
+  },
+  {
+    "id": "hld-09",
+    "track": "HLD",
+    "title": "Enterprise RAG platform: retrieval, access, and evaluation",
+    "level": "Advanced",
+    "minutes": 75,
+    "summary": "Design grounded answers over changing private documents with measurable quality.",
+    "sections": [
+      {
+        "heading": "Begin with a product contract",
+        "body": "Build an internal question-answering service over documents with changing permissions. The goal is useful answers supported by accessible evidence, not merely fluent text. Specify supported document types, ingestion freshness, tenant isolation, expected latency, and how the system responds when evidence is missing or contradictory. Separate ingestion from serving. A source document has identity, version, access metadata, and deletion status. A chunk inherits that context and includes a stable locator for citations. The model is one component; document quality, retrieval, permissions, and evaluation can dominate whether the system is useful."
+      },
+      {
+        "heading": "Ingestion and retrieval design",
+        "body": "A connector fetches an authorized source version, extracts text, preserves structure, creates chunks, and writes lexical and vector representations. Record parser and embedding versions so a rebuild can be explained and rolled back. Chunk boundaries should preserve meaning and references instead of blindly cutting every fixed number of characters. At query time, enforce tenant and document access boundaries, retrieve candidates through lexical and semantic paths, rerank when justified, and fit selected evidence into a context budget. A filter applied only after retrieving a few candidates can reduce recall; an access-aware retrieval strategy needs evaluation for both security and quality."
+      },
+      {
+        "heading": "Worked example: an outdated policy",
+        "body": "A user asks how many days of remote work are permitted. Retrieval finds a current policy allowing two days and an archived policy allowing three. Both documents have similar vocabulary, so similarity alone cannot choose authority. The context builder includes version and effective-date metadata and prefers the current authoritative document under a stated policy. The answer cites the exact supporting passage and can mention that an archived policy differs if useful. If the user loses access before generation, the serving path must not reuse an old unrestricted cached answer. Query, evidence, permission context, and content version all affect cache validity."
+      },
+      {
+        "heading": "Safety, cost, and failure boundaries",
+        "body": "Retrieved content is untrusted data, including instructions embedded in documents. It must not silently redefine system behavior or grant tool permissions. If the application can take actions, use explicit authorization and bounded tool interfaces outside the language model’s prose. Keep provider credentials on the server and avoid logging sensitive context by default. Apply per-tenant budgets, timeouts, and bounded retries. A fallback to a smaller model may reduce cost but can change answer quality, so evaluate it. A citation that points to a document does not prove the answer is supported; evaluate the relationship between each material claim and its evidence."
+      },
+      {
+        "heading": "Evaluation lab and operations",
+        "body": "Create a test set covering answerable questions, absent facts, conflicting versions, inaccessible documents, and malicious instructions inside retrieved text. Label relevant evidence separately from expected answer properties. Measure retrieval recall at K, groundedness, usefulness, abstention behavior, permission leakage, latency, and cost per successful task. Compare lexical-only, semantic-only, and hybrid retrieval on the same set. Simulate deletion and permission revocation through the ingestion pipeline and measure propagation. Version prompts, retrieval configuration, indexes, and model choices so regressions can be isolated. Finish by tracing one answer from source version through chunks and retrieval scores to its final citations."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Authorized Query",
+        "Hybrid Retrieval",
+        "Context Builder",
+        "Model + Citations"
+      ],
+      "caption": "Authorization constrains retrieval; selected evidence enters a bounded context; generation returns traceable citations or an explicit lack of evidence."
+    },
+    "questions": [
+      {
+        "q": "Does RAG eliminate hallucinations?",
+        "a": "No. It supplies evidence, but retrieval errors, misleading context, and unsupported generation still require evaluation and controlled failure behavior."
+      },
+      {
+        "q": "Why include access context in cache design?",
+        "a": "An answer generated for an authorized user may reveal information to another user or after permissions change."
+      },
+      {
+        "q": "What should be evaluated independently of generation?",
+        "a": "Whether retrieval finds the right accessible, current evidence for the question."
+      }
+    ],
+    "lab": "Create a 20-case evaluation set and compare three retrieval strategies, including inaccessible and contradictory evidence.",
+    "sources": [
+      {
+        "title": "Further reading: RAG solution design and evaluation",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/rag/rag-solution-design-and-evaluation-guide"
+      },
+      {
+        "title": "Further reading: Microsoft cloud design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      }
+    ],
+    "updated": "2026-10-15"
+  },
+  {
+    "id": "hld-10",
+    "track": "HLD",
+    "title": "File sync: manifests, conflicts, and resumable transfer",
+    "level": "Advanced",
+    "minutes": 75,
+    "summary": "Separate immutable content from mutable names and version history.",
+    "sections": [
+      {
+        "heading": "Define the synchronization promise",
+        "body": "Design personal file storage across a laptop and phone with offline edits, resumable uploads, sharing, and version history. The service should preserve user data when edits conflict, even if it cannot automatically merge every file. Separate file identity from its path: renaming a file should not create unrelated content if stable identity is available. Metadata contains owner, parent directory, name, version, and a manifest of content chunks. Content objects can be immutable and addressed by a strong hash or another stable identifier. The service must still authenticate access; knowing a content identifier is not permission to read it."
+      },
+      {
+        "heading": "Upload and metadata commitment",
+        "body": "A client detects a local change, computes the new manifest, asks which chunks are missing, and uploads those chunks through resumable operations. After the required content exists, it conditionally commits a new metadata version using the base version it edited. This prevents a partial upload from replacing the visible file with missing bytes. The server records changes in a cursor-based journal so clients can fetch updates incrementally. A client acknowledges a cursor only after it has durably recorded the corresponding local state. Periodic reconciliation handles missed filesystem events and journal retention boundaries."
+      },
+      {
+        "heading": "Worked example: two offline editors",
+        "body": "Laptop and phone both begin with file version 7. Offline, the laptop changes paragraph one and the phone changes paragraph two. The laptop reconnects and conditionally commits version 8 based on 7. The phone’s commit based on 7 now conflicts. For a plain-text file, a three-way merge may combine changes using version 7 as the base; for a binary file, preserving a conflict copy is often safer. Last-write-wins would be simple but can silently discard one user’s work. The resolution must create a new version and retain enough history to explain what happened."
+      },
+      {
+        "heading": "Deletion, sharing, and garbage collection",
+        "body": "A deletion needs a tombstone so offline clients learn that the file was removed instead of uploading it again as new. Define how long tombstones and old versions remain available. Garbage collection can remove unreferenced chunks only after considering active versions, pending uploads, retention windows, and shared references. Global deduplication can expose cross-user existence information if the API reveals whether another user owns a chunk, so scope or conceal that behavior carefully. Sharing changes belong to authoritative metadata and must be checked when issuing download access. A cached link needs a stated expiration and revocation contract."
+      },
+      {
+        "heading": "Lab and failure review",
+        "body": "Build a toy client journal and server version store. Simulate an upload interrupted halfway, a metadata commit retried after a lost response, a rename concurrent with edit, a deleted file on an offline device, and two edits based on the same version. Verify that incomplete chunks never become the visible file. Estimate transfer savings when one chunk changes in a large file, then account for manifest overhead and hash computation. Measure synchronization lag, conflict rate, retries, and orphaned storage. Explain a conservative initial retention policy and how garbage collection proves an object is safe to delete."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Client Journal",
+        "Sync API",
+        "Metadata Versions",
+        "Chunk Storage"
+      ],
+      "caption": "Clients exchange metadata versions, transfer missing immutable chunks, and resolve concurrent file edits explicitly."
+    },
+    "questions": [
+      {
+        "q": "Why separate content upload from metadata commit?",
+        "a": "The visible version should change only after all referenced content is available."
+      },
+      {
+        "q": "Why is last-write-wins risky for files?",
+        "a": "It can silently discard a valid concurrent edit, especially when client clocks differ or edits occurred offline."
+      },
+      {
+        "q": "What does a tombstone solve?",
+        "a": "It communicates deletion to lagging clients and helps prevent stale copies from reappearing."
+      }
+    ],
+    "lab": "Simulate two offline clients editing version 7 and preserve both changes through an explicit conflict policy.",
+    "sources": [
+      {
+        "title": "Further reading: Microsoft cloud design patterns",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/"
+      },
+      {
+        "title": "Further reading: Google Site Reliability Engineering",
+        "url": "https://sre.google/sre-book/table-of-contents/"
+      }
+    ],
+    "updated": "2026-10-15"
+  },
+  {
+    "id": "hld-11",
+    "track": "HLD",
+    "title": "Telemetry pipeline: metrics, logs, traces, and overload",
+    "level": "Advanced",
+    "minutes": 75,
+    "summary": "Design the monitoring system as a workload with its own failure modes.",
+    "sections": [
+      {
+        "heading": "Define the questions the system must answer",
+        "body": "Build a telemetry service that detects customer-impacting failures and supports investigation. Metrics summarize measurements over time; logs record events; traces connect work across service boundaries. They complement each other but have different storage and query patterns. Define acceptable ingestion loss, freshness, retention, and tenant isolation. A useful first requirement is an alert when successful request availability falls below a chosen objective, not a dashboard with every available counter. Telemetry collection must have bounded overhead so an observability outage does not become an application outage."
+      },
+      {
+        "heading": "Collection, buffering, and storage",
+        "body": "Applications emit bounded records to local or nearby collectors. Collectors batch, compress, attach approved metadata, and forward through a durable buffer when required by the loss budget. Storage paths can differ: a time-series store for aggregate metrics, indexed event storage for logs, and trace-oriented storage for spans. A common correlation identifier links investigations without requiring every log field to become an index. Backpressure policy decides whether to drop, sample, or block under overload. Blocking application requests on a full telemetry queue is usually a deliberate exception, not a harmless default."
+      },
+      {
+        "heading": "Worked cardinality and volume estimate",
+        "body": "Assume 100 services, each exposing 50 metric names across 20 instances. That gives 100,000 series before other label combinations. Adding a user identifier with one million values can multiply cardinality catastrophically if those combinations are populated. Use bounded labels such as endpoint templates and status classes; keep individual request identifiers in logs or traces when needed. For logs, 10,000 events per second at 500 bytes each produce about 5 MB per second, or 432 GB per day of raw payload. Compression, replication, indexes, and retention change physical storage, so state those multipliers separately rather than hiding them."
+      },
+      {
+        "heading": "Sampling, alerts, and failures",
+        "body": "Head sampling decides early which traces to retain and can cheaply bound volume, but it may miss rare failures. Tail sampling uses completed-trace information to keep interesting cases, at the cost of buffering, coordination, and waiting. Neither should quietly bias a metric used as an exact denominator. Alert on symptoms with actionable ownership and include enough context for investigation. A traffic drop to zero can mean no users or broken collection, so monitor the telemetry pipeline itself and distinguish missing data from successful requests. Keep a minimal independent health signal for major pipeline failures."
+      },
+      {
+        "heading": "Lab and operational review",
+        "body": "Design one availability alert and one latency alert with explicit windows and missing-data behavior. Generate a traffic trace with a short spike, sustained failure, and collector outage; show which conditions page an operator. Calculate storage for seven days of logs under a stated compression and replication assumption. Add one unbounded label and explain how you detect and contain the resulting series growth. Measure ingestion lag, rejected records, buffer age, query latency, and alert delay. Finish with a runbook that connects a customer symptom to metrics, a trace, and relevant logs without exposing unnecessary sensitive payloads."
+      }
+    ],
+    "diagram": {
+      "nodes": [
+        "Instrumented Services",
+        "Collectors",
+        "Durable Buffer",
+        "Query + Alerts"
+      ],
+      "caption": "Collectors batch and bound telemetry; storage serves investigations and alerting without making application health depend on telemetry health."
+    },
+    "questions": [
+      {
+        "q": "Why can metric labels be more dangerous than metric names?",
+        "a": "Each populated combination creates another series; an unbounded label can multiply state and indexing cost."
+      },
+      {
+        "q": "Does absence of errors prove health?",
+        "a": "No. Traffic or telemetry collection may be missing, so missing data needs explicit interpretation."
+      },
+      {
+        "q": "Why separate telemetry buffering from application success?",
+        "a": "A monitoring outage should not automatically block the application’s primary work; any stronger delivery guarantee needs an explicit tradeoff."
+      }
+    ],
+    "lab": "Design a bounded telemetry pipeline and evaluate an alert against spikes, sustained failure, and missing data.",
+    "sources": [
+      {
+        "title": "Further reading: monitoring distributed systems",
+        "url": "https://sre.google/sre-book/monitoring-distributed-systems/"
+      },
+      {
+        "title": "Further reading: Google Site Reliability Engineering",
+        "url": "https://sre.google/sre-book/table-of-contents/"
+      }
+    ],
+    "updated": "2026-10-15"
+  }
+]
