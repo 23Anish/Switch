@@ -10,4 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: node scripts/check-javascript.js
+      - run: node scripts/check-workspace.js
+      - run: node scripts/check-inputs.js
+      - run: python3 scripts/check-theory.py
       - run: python3 scripts/check-content.py

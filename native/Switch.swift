@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         for (title, action, key) in [("Undo", "undo:", "z"), ("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] { edit.submenu?.addItem(withTitle: title, action: Selector(action), keyEquivalent: key) }
         NSApp.mainMenu = menu
         let config = WKWebViewConfiguration()
+        config.userContentController.addUserScript(WKUserScript(source: "window.switchCapabilities = {cppApiVersion: 2, appVersion: '2.2.0'};", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         config.userContentController.add(self, name: "runCode"); config.userContentController.add(self, name: "export")
         web = WKWebView(frame: .zero, configuration: config); web.navigationDelegate = self; web.uiDelegate = self
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 860), styleMask: [.titled,.closable,.miniaturizable,.resizable], backing: .buffered, defer: false)
@@ -41,7 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }
         guard message.name == "runCode", let body=message.body as? [String:Any], let id=body["id"] as? String, let language=body["language"] as? String, let code=body["code"] as? String, let input=body["input"] as? String, code.utf8.count < 500000, input.utf8.count < 1000000 else { return }
         runner.async {
-            let result=self.execute(language:language,code:code,input:input,practice:body["practice"] as? Bool ?? false)
+            let result=self.execute(language:language,code:code,input:input,practice:body["practice"] as? Bool ?? false,problemId:body["problemId"] as? String)
             DispatchQueue.main.async {
                 if let json=try? JSONSerialization.data(withJSONObject:[id,result]), let args=String(data:json,encoding:.utf8) { self.web.evaluateJavaScript("window.switchNativeResult(...\(args))",completionHandler:nil) }
             }
@@ -66,7 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             return (p.terminationStatus,text+(data.count>65536 ? "\n[Output truncated]" : ""))
         }catch{return (-1,error.localizedDescription)}
     }
-    func execute(language:String,code:String,input:String,practice:Bool = false)->String {
+    func execute(language:String,code:String,input:String,practice:Bool = false,problemId:String? = nil)->String {
         let dir=FileManager.default.temporaryDirectory.appendingPathComponent("switch-"+UUID().uuidString)
         do {
             try FileManager.default.createDirectory(at:dir,withIntermediateDirectories:true);defer{try? FileManager.default.removeItem(at:dir)}
@@ -81,7 +82,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 let includeDir=Bundle.main.resourceURL!.appendingPathComponent("include")
                 let suffix=practice ? (try String(contentsOf:includeDir.appendingPathComponent("harness.cpp"),encoding:.utf8)) : ""
                 let prefix=practice ? "#include \"switch_runtime.hpp\"\n" : ""
-                try (prefix+code+"\n"+suffix).write(to:dir.appendingPathComponent("main.cpp"),atomically:true,encoding:.utf8)
+                var adapter=""
+                if practice {
+                    let data=try Data(contentsOf:includeDir.appendingPathComponent("cpp-adapters.json"))
+                    let adapters=try JSONDecoder().decode([String:String].self,from:data)
+                    guard let id=problemId,let source=adapters[id] else { return "This problem has no C++ test runner. Reopen it in the updated app." }
+                    adapter=source
+                }
+                try (prefix+"#line 1 \"solution.cpp\"\n"+code+"\n#line 1 \"runner.cpp\"\n"+adapter+"\n"+suffix).write(to:dir.appendingPathComponent("main.cpp"),atomically:true,encoding:.utf8)
                 let (status,text)=invoke(compiler,["-std=c++17","-O0","-I",includeDir.path,"main.cpp","-o","main"],dir,"",30)
                 if status != 0{return "Compilation failed:\n"+text};program=dir.appendingPathComponent("main").path;args=[]
             case "java":
@@ -98,10 +106,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 if CommandLine.arguments.contains("--self-test") {
     let runner=AppDelegate()
     let cases="[{\"input\":[3,1,7,2],\"expected\":7},{\"input\":[-8,-3],\"expected\":-3}]"
-    let cpp=runner.execute(language:"cpp",code:"json solve(const json& input) { auto a=input.get<vector<int>>(); return *max_element(a.begin(),a.end()); }",input:cases,practice:true)
     let python=runner.execute(language:"python",code:"def solve(input):\n    return max(input)",input:cases,practice:true)
-    print("C++ runner:\n"+cpp+"\nPython runner:\n"+python)
-    exit(cpp.contains("TEST 2: PASS") && python.contains("TEST 2: PASS") ? 0 : 1)
+    print("Python runner:\n"+python)
+    var passed=python.contains("TEST 2: PASS") && !python.contains("FAIL") && !python.contains("ERROR")
+    do {
+        let data=try Data(contentsOf:Bundle.main.resourceURL!.appendingPathComponent("include/cpp-smoke.json"))
+        guard let samples=try JSONSerialization.jsonObject(with:data) as? [[String:Any]], !samples.isEmpty else { exit(1) }
+        for sample in samples {
+            guard let id=sample["id"] as? String,let code=sample["code"] as? String,let tests=sample["tests"] as? [[String:Any]] else { exit(1) }
+            let input=String(decoding:try JSONSerialization.data(withJSONObject:tests),as:UTF8.self)
+            let output=runner.execute(language:"cpp",code:code,input:input,practice:true,problemId:id)
+            print("C++ \(id):\n"+output)
+            passed = passed && output.contains("TEST \(tests.count): PASS") && !output.contains("FAIL") && !output.contains("ERROR")
+        }
+    } catch { print(error.localizedDescription); passed=false }
+    exit(passed ? 0 : 1)
 }
 let app=NSApplication.shared
 let delegate=AppDelegate();app.delegate=delegate

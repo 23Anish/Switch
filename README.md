@@ -8,13 +8,15 @@ A quiet, local-first studio for preparing your next engineering role.
 
 - 250 original DSA practice problems, grouped by topic and progression, with Easy/Medium/Hard difficulty.
 - Clear input/output contracts, constraints, worked examples, baseline and improved approaches, complexity notes, and C++17/Python 3 reference solutions.
-- A coding workspace with saved drafts, custom inputs, and included practice tests. C++ is the default language.
+- A coding workspace with saved drafts, named argument fields, optional raw JSON input, and included practice tests. C++ is the default language.
+- A study landing page, collapsible topic sheet, searchable problem table, sorting, and bookmarks.
+- 24 executable worked theory examples with walkthroughs, diagrams, expected output, and follow-up exercises.
 - Core CS: operating systems, networks, databases, OOP/C++, and distributed systems.
 - Separate low-level and high-level design case studies with theory, diagrams, interview questions, and labs.
 - Modern AI: transformers, embeddings, RAG, agents, OpenAI, Claude, Gemini, MCP, hooks, skills, evaluations, quantization, and inference.
 - Google and Microsoft preparation tracks grounded in official interview guidance.
 - Step-through pattern diagrams, a 12-week roadmap, a mock timer, notes, spaced revision, and separate learner profiles.
-- Sage, Paper, and Midnight themes. Progress and theme preferences stay on your device; JSON export/import moves them between devices.
+- Ten light and dark themes: Sage, Paper, Midnight, Graphite, Ocean, Forest, Lavender, Rose, Sand, and Solarized. Progress and theme preferences stay on your device; JSON export/import moves them between devices.
 
 ## Choose how to use it
 
@@ -34,15 +36,19 @@ The browser app caches its content after an initial HTTPS visit. External readin
 3. If macOS blocks the app, review it in **System Settings → Privacy & Security → Open Anyway**. This personal build is ad-hoc signed, not Apple notarized.
 4. For C++ execution, install Apple’s Command Line Tools (`xcode-select --install`). For Python, install Python 3 from [python.org](https://www.python.org/downloads/macos/) or your preferred package manager. JavaScript needs neither.
 
-The universal app supports Apple Silicon and Intel Macs with macOS 12 or newer. The included C++ JSON library is bundled, so there are no runtime downloads.
+The universal app supports Apple Silicon and Intel Macs with macOS 12 or newer. All runner dependencies are bundled, so there are no runtime downloads.
 
 **Local execution:** the Mac app runs the code you explicitly submit as your user account. Time and output limits prevent common accidental runaway programs, but this is not an OS security sandbox. Run only code you trust. The app does not send your code to an external judge.
 
 ## Coding contract
 
-C++ reference code implements `json solve(const json& input)`. The runner supplies standard headers, `using namespace std`, the nlohmann `json` type, and a main function. Python implements `solve(input)` and can import standard-library modules. Inputs and outputs follow each problem’s JSON contract, including any required order of arrays. Tests are practice checks, not an exhaustive judge.
+C++ starters and solutions are standard C++17 functions with typed parameters and return values, such as `int largestElement(const vector<int>& nums)`. Each snippet includes its own standard-library headers. Linked-list and tree exercises include `ListNode` and `TreeNode` definitions. Implement the function shown in the starter; the app supplies test calls, so no `main` is needed. You can also copy a solution into an ordinary C++ program and call it from your own `main`.
 
-For a standalone C++ program, include `native/include/switch_runtime.hpp`, paste the function, then add `native/include/harness.cpp`. The harness reads an array of `{ "input": ..., "expected": ... }` test cases from standard input. Omit `expected` for a custom-output run. The Python harness works the same way.
+Inputs displayed in the test panel use JSON for easy editing. The Mac runner converts them to the function's C++ types behind the scenes, including trees, linked lists, optional values, and structured results. JSON is not part of the C++ code you write. Python uses `solve(input)` and can import standard-library modules. Output ordering follows each problem's contract. Included tests are practice checks, not an exhaustive judge.
+
+**Upgrading from 2.0:** install Switch 2.1 or newer for the typed C++ runner. Earlier C++ drafts remain available under **Previous C++ draft** beneath the editor. New typed drafts are saved separately. Notes, completion, Python drafts, and profiles keep their existing keys.
+
+For contributors, `dsa.json` stores each problem's typed starter, solution, signature, and private input/output adapter. `scripts/build-data.py` generates the browser curriculum without adapter code and packages the adapter map for the native runner. Generated bundles are not committed.
 
 ## Run or build from source
 
@@ -65,10 +71,13 @@ The result is `dist/Switch-macOS.zip`. Rebuild after changing the source or curr
 
 ```sh
 node scripts/check-javascript.js
+node scripts/check-workspace.js
+node scripts/check-inputs.js
+python3 scripts/check-theory.py
 python3 scripts/check-content.py
 ```
 
-The Python check executes every Python reference and compiles/executes every C++ reference against the included tests. A C++17 compiler named `clang++` is required. The tests validate examples and selected boundaries; they do not prove every algorithm correct for every valid input.
+The Python check executes every Python reference, checks all C++ starters and solutions as standalone standard C++17, verifies starter compatibility with the adapters, and executes every C++ reference against the included tests. A C++17 compiler named `clang++` is required. The tests validate examples and selected boundaries; they do not prove every algorithm correct for every valid input.
 
 ## Contributing
 

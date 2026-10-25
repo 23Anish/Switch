@@ -28,6 +28,6 @@ codesign --verify --deep --strict "$APP"
 mkdir -p dist
 cp README.md dist/README.md
 cp -R web dist/web
-cp -R "$APP" dist/Switch.app
+ditto "$APP" dist/Switch.app
 COPYFILE_DISABLE=1 ditto -c -k --keepParent "$APP" dist/Switch-macOS.zip
 printf 'Built universal Mac app: %s\n' "$PWD/dist/Switch-macOS.zip"

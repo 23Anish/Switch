@@ -1,0 +1,717 @@
+[
+  {
+    "lessonId": "lesson-02",
+    "title": "Measure fairness with a round-robin scheduler",
+    "concept": "A scheduler chooses which runnable process owns the CPU next. This deterministic simulation separates response time, the delay before first execution, from turnaround time, the delay until completion. All jobs arrive at time zero and perform CPU work only. A quantum of two time units makes the short jobs responsive without requiring advance knowledge of their remaining duration. The simulation deliberately omits context-switch cost so you can first verify the scheduling policy and then add the overhead as a separate experiment.",
+    "walkthrough": [
+      "Place A, B, and C in a FIFO ready queue with bursts 5, 3, and 1. Record the first start only once per job.",
+      "Run the head for min(quantum, remaining). Completed jobs leave the system; unfinished jobs join the back of the queue.",
+      "A runs at 0–2, B at 2–4, and C at 4–5. C finishes before either longer job despite arriving last.",
+      "Completion times are C=5, B=8, A=9. Waiting time is turnaround minus useful CPU work because this model has no I/O."
+    ],
+    "language": "Python 3",
+    "code": "from collections import deque\n\ndef round_robin(bursts, quantum):\n    if quantum <= 0:\n        raise ValueError(\"quantum must be positive\")\n    ready = deque(bursts)\n    remaining = dict(bursts)\n    first_start, completion, timeline = {}, {}, []\n    now = 0\n    while ready:\n        name = ready.popleft()\n        first_start.setdefault(name, now)\n        used = min(quantum, remaining[name])\n        timeline.append(f\"{name}:{now}-{now + used}\")\n        now += used\n        remaining[name] -= used\n        if remaining[name]:\n            ready.append(name)\n        else:\n            completion[name] = now\n    return timeline, first_start, completion\n\nbursts = {\"A\": 5, \"B\": 3, \"C\": 1}\ntrace, response, completion = round_robin(bursts, 2)\nprint(\" \".join(trace))\nfor name, burst in bursts.items():\n    print(name, \"response\", response[name], \"waiting\", completion[name] - burst)\n",
+    "expectedOutput": "A:0-2 B:2-4 C:4-5 A:5-7 B:7-8 A:8-9\nA response 0 waiting 4\nB response 2 waiting 5\nC response 4 waiting 4\n",
+    "tradeoffs": [
+      "A smaller quantum can improve first-response latency while increasing scheduling and cache-reload overhead.",
+      "The optimal policy depends on the objective: fairness, throughput, average turnaround, and tail latency are different goals.",
+      "Real schedulers also handle arrivals, priorities, multicore placement, and processes that block on I/O."
+    ],
+    "exercise": "Add one time unit of overhead whenever execution switches to a different job. What happens to completion time and CPU utilization?",
+    "solution": "Charge overhead before each dispatch except the first, when the next job differs from the previous one. This trace contains five such switches, so elapsed time becomes 14 while useful CPU time stays 9; utilization is 9/14, about 64.3%. Keep overhead separate from burst consumption. Response and waiting times increase, demonstrating why an arbitrarily tiny quantum is not free.",
+    "diagram": [
+      "Ready queue A → B → C",
+      "Run at most 2 time units",
+      "Unfinished → queue tail",
+      "Completed → metrics"
+    ],
+    "sources": [
+      {
+        "title": "Operating Systems: Three Easy Pieces",
+        "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-03",
+    "title": "Follow page hits, misses, and LRU eviction",
+    "concept": "Virtual addresses identify pages plus an offset; physical memory contains a limited number of page frames. This example models the replacement decision after the system discovers that a referenced page is absent. It uses exact least-recently-used ordering to make each decision visible. A hit moves the page to the newest position; a miss may evict the oldest page. This is a page-cache model, not a TLB model: a TLB miss can still find a resident page in the page table without causing a page fault.",
+    "walkthrough": [
+      "Start with three empty frames and reference pages 1, 2, 3. These compulsory misses fill the frames.",
+      "Referencing page 1 again is a hit and moves it behind pages 2 and 3 in recency order.",
+      "Page 4 evicts page 2. The next reference to page 2 misses and evicts page 3, showing how locality determines fault rate.",
+      "Verify every frame list is ordered oldest to newest, with no duplicate page and no more than three entries."
+    ],
+    "language": "Python 3",
+    "code": "from collections import OrderedDict\n\ndef simulate(pages, capacity):\n    if capacity <= 0:\n        raise ValueError(\"capacity must be positive\")\n    frames = OrderedDict()\n    hits = faults = 0\n    for page in pages:\n        if page in frames:\n            hits += 1\n            frames.move_to_end(page)\n            event = \"hit\"\n        else:\n            faults += 1\n            event = \"fault\"\n            if len(frames) == capacity:\n                victim, _ = frames.popitem(last=False)\n                event += f\" evict={victim}\"\n            frames[page] = True\n        assert len(frames) <= capacity\n        print(page, event, list(frames))\n    print(\"hits\", hits, \"faults\", faults)\n\nsimulate([1, 2, 3, 1, 4, 2, 1], 3)\n",
+    "expectedOutput": "1 fault [1]\n2 fault [1, 2]\n3 fault [1, 2, 3]\n1 hit [2, 3, 1]\n4 fault evict=2 [3, 1, 4]\n2 fault evict=3 [1, 4, 2]\n1 hit [4, 2, 1]\nhits 2 faults 5\n",
+    "tradeoffs": [
+      "Exact LRU needs recency bookkeeping on every access; operating systems often approximate recency with hardware access bits.",
+      "A clean victim can be discarded, while a dirty victim may require writeback before its frame is reused.",
+      "Increasing capacity can reduce faults, but it does not repair a workload whose working set greatly exceeds available memory."
+    ],
+    "exercise": "Compare the same trace using FIFO. Which access behaves differently, and why?",
+    "solution": "FIFO does not refresh insertion order on a hit. After loading 1,2,3, the hit on 1 leaves 1 as the oldest arrival; page 4 therefore evicts 1 rather than 2. The following reference to 2 hits, then the final reference to 1 faults. Both policies happen to have five faults on this short trace, but the individual victims differ. Compare traces rather than assuming equal totals mean equal policies.",
+    "diagram": [
+      "Virtual page reference",
+      "Resident? → hit and refresh",
+      "Absent? → choose victim",
+      "Load page → retry access"
+    ],
+    "sources": [
+      {
+        "title": "Operating Systems: Three Easy Pieces",
+        "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-05",
+    "title": "Detect a deadlock in a wait-for graph",
+    "concept": "A wait-for graph has a directed edge from a blocked thread to the thread owning the resource it needs. For exclusive resources with one instance each, a directed cycle identifies a deadlock. The code distinguishes a node currently on the DFS recursion path from one already fully explored; only an edge back into the current path closes a cycle. It returns the concrete cycle so an interview explanation can connect the graph to a lock-acquisition sequence.",
+    "walkthrough": [
+      "Thread A holds one lock and waits for B; B waits for C; C waits for A. D also waits for A but is not part of the cycle.",
+      "Mark a node active when entering it. Store its location in the current path to reconstruct a cycle efficiently.",
+      "Seeing an active neighbor A while visiting C returns A→B→C→A. A previously completed neighbor would not prove a cycle.",
+      "Removing C’s dependency breaks the cycle. Remaining waits may delay work, but this graph no longer proves deadlock."
+    ],
+    "language": "Python 3",
+    "code": "def deadlock_cycle(wait_for):\n    done, active, path = set(), {}, []\n    def visit(thread):\n        if thread in active:\n            return path[active[thread]:] + [thread]\n        if thread in done:\n            return None\n        active[thread] = len(path)\n        path.append(thread)\n        for owner in wait_for.get(thread, []):\n            cycle = visit(owner)\n            if cycle:\n                return cycle\n        path.pop()\n        active.pop(thread)\n        done.add(thread)\n        return None\n    for thread in wait_for:\n        cycle = visit(thread)\n        if cycle:\n            return cycle\n    return None\n\ngraph = {\"A\": [\"B\"], \"B\": [\"C\"], \"C\": [\"A\"], \"D\": [\"A\"]}\nprint(\" -> \".join(deadlock_cycle(graph)))\ngraph[\"C\"] = []\nprint(\"after release:\", deadlock_cycle(graph))\n",
+    "expectedOutput": "A -> B -> C -> A\nafter release: None\n",
+    "tradeoffs": [
+      "A consistent global lock order prevents circular wait; detection only reveals a cycle after it forms.",
+      "Resources with multiple interchangeable instances require richer allocation reasoning than this simple wait-for graph.",
+      "A live snapshot can change during inspection, so production diagnostics should correlate ownership and waiting records carefully."
+    ],
+    "exercise": "Give every lock an integer rank and require threads to acquire locks in increasing order. Explain why a cycle becomes impossible.",
+    "solution": "Along each wait edge, the blocked thread would be requesting a lock ranked above the locks it already holds. A cycle would require ranks to increase strictly around the entire loop and return to the starting rank, which is impossible. The proof depends on every acquisition path following the order, including callbacks and error handling; one exception invalidates the guarantee.",
+    "diagram": [
+      "A owns L1; needs L2",
+      "B owns L2; needs L3",
+      "C owns L3; needs L1",
+      "Cycle → no participant can proceed"
+    ],
+    "sources": [
+      {
+        "title": "Operating Systems: Three Easy Pieces",
+        "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-08",
+    "title": "Reassemble a byte stream despite out-of-order segments",
+    "concept": "TCP delivers an ordered byte stream even when segments arrive out of order or are retransmitted. This receiver model stores individual bytes by sequence position and advances a cumulative acknowledgment only across a contiguous prefix. An acknowledgment of 5 means that bytes before position 5 have been received contiguously and byte 5 is expected next. The exercise focuses on sequencing; it intentionally omits sequence-number wraparound, SYN/FIN accounting, receive windows, congestion control, and conflicting overlapping segments.",
+    "walkthrough": [
+      "Receive bytes starting at sequence 5 before any bytes at sequence 0. Store them but keep the acknowledgment at 0.",
+      "Receive “hello” at sequence 0. The receiver can now drain both contiguous segments and acknowledge sequence 11.",
+      "Replay the original first segment. Positions below the current acknowledgment are duplicates, so delivered data does not change.",
+      "This explains why application reads cannot assume that one read corresponds to one sender write or network segment."
+    ],
+    "language": "Python 3",
+    "code": "class Receiver:\n    def __init__(self):\n        self.next_sequence = 0\n        self.pending = {}\n        self.delivered = bytearray()\n\n    def receive(self, sequence, payload):\n        for offset, byte in enumerate(payload):\n            position = sequence + offset\n            if position >= self.next_sequence:\n                self.pending.setdefault(position, byte)\n        while self.next_sequence in self.pending:\n            byte = self.pending.pop(self.next_sequence)\n            self.delivered.append(byte)\n            self.next_sequence += 1\n        return self.next_sequence\n\nreceiver = Receiver()\nsegments = [(5, b\" world\"), (0, b\"hello\"), (0, b\"hello\")]\nfor sequence, payload in segments:\n    ack = receiver.receive(sequence, payload)\n    print(\"ack\", ack, \"data\", repr(receiver.delivered.decode()))\nassert receiver.delivered == b\"hello world\"\nassert not receiver.pending\n",
+    "expectedOutput": "ack 0 data ''\nack 11 data 'hello world'\nack 11 data 'hello world'\n",
+    "tradeoffs": [
+      "Cumulative acknowledgments compactly report a contiguous prefix; selective acknowledgment can also describe received ranges beyond a gap.",
+      "Buffering unlimited out-of-order data is unsafe, so real receivers enforce advertised windows and resource limits.",
+      "Transport reliability does not provide application transaction idempotency: a retried HTTP payment is a separate concern."
+    ],
+    "exercise": "Insert a missing byte between two received ranges. What must the cumulative acknowledgment do before and after that byte arrives?",
+    "solution": "Before the gap is filled, the acknowledgment must remain at the first missing byte even if later bytes are buffered. Once the byte arrives, advance through every newly contiguous buffered byte, potentially jumping across several segments in one step. Add a bounded receive window and reject positions outside it to avoid unbounded buffering.",
+    "diagram": [
+      "Segment 5..10 → buffer",
+      "Segment 0..4 → fill gap",
+      "Drain contiguous bytes 0..10",
+      "ACK 11 → next byte expected"
+    ],
+    "sources": [
+      {
+        "title": "IETF TCP specification",
+        "url": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-10",
+    "title": "Revalidate cached HTTP content with an ETag",
+    "concept": "Freshness and validation answer different questions. Freshness allows a cache to reuse a response without contacting the origin for some period; validation asks whether a stored representation is still current. This local model assigns a quoted strong ETag derived from response bytes and uses an exact If-None-Match comparison for a GET. A match returns status 304 with no representation body; a changed body produces a new validator and status 200. It illustrates the exchange without opening a socket.",
+    "walkthrough": [
+      "Fetch “version one” without a validator. Store the body and the returned ETag from the 200 response.",
+      "Send the stored ETag on the second GET. The origin returns 304, so the client keeps the original cached body.",
+      "Change the origin content. The old ETag no longer matches and the third request transfers a fresh body.",
+      "Track body byte counts separately from status codes: validation saves body transfer but still incurs a round trip."
+    ],
+    "language": "Python 3",
+    "code": "import hashlib\n\nclass Origin:\n    def __init__(self, body):\n        self.body = body\n\n    def get(self, if_none_match=None):\n        encoded = self.body.encode(\"utf-8\")\n        etag = '\"' + hashlib.sha256(encoded).hexdigest() + '\"'\n        headers = {\"ETag\": etag, \"Cache-Control\": \"max-age=0\"}\n        if if_none_match == etag:\n            return 304, headers, b\"\"\n        return 200, headers, encoded\n\norigin = Origin(\"version one\")\nvalidator, cached = None, b\"\"\nfor change in [None, None, \"version two\"]:\n    if change is not None:\n        origin.body = change\n    status, headers, body = origin.get(validator)\n    if status == 200:\n        validator, cached = headers[\"ETag\"], body\n    print(status, \"bytes\", len(body), \"cached\", cached.decode())\n",
+    "expectedOutput": "200 bytes 11 cached version one\n304 bytes 0 cached version one\n200 bytes 11 cached version two\n",
+    "tradeoffs": [
+      "This example accepts one exact strong validator. Full HTTP semantics also cover lists, wildcards, weak validators, methods, and representation variants.",
+      "An ETag is a validator, not an authorization mechanism; private responses still need appropriate cache policy and access checks.",
+      "Hashing content may cost CPU. A trustworthy version identifier can be cheaper if every relevant representation change updates it."
+    ],
+    "exercise": "Add a language variant for the same URL. Why is using only the URL as a cache key insufficient?",
+    "solution": "If the origin selects English or Hindi using Accept-Language, the cache must distinguish those selected representations, commonly through Vary: Accept-Language and a variant-aware cache key. Otherwise one user can receive another language’s cached body even when each body has a valid ETag. Compute or store validators for the actual selected representation.",
+    "diagram": [
+      "Client cached body + ETag",
+      "GET with If-None-Match",
+      "Unchanged → 304, reuse body",
+      "Changed → 200, replace body"
+    ],
+    "sources": [
+      {
+        "title": "IETF HTTP semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-13",
+    "title": "Turn a table scan into a covering-index lookup",
+    "concept": "A useful index reflects the query’s filtering and ordering needs. The query below asks for one customer’s most recent orders. An index beginning with customer supports the equality predicate; placing created next supports the requested order; including amount allows the selected values to come from the index. We inspect the plan rather than assuming an index will help. The output normalizes plan details because SQLite’s explanatory wording can change between versions.",
+    "walkthrough": [
+      "Create 1,000 orders across ten customers and ask for the newest three orders belonging to customer 7.",
+      "Before adding the index, verify that the plan scans orders and does not name the proposed index.",
+      "Create a composite index on customer, created descending, and amount. Inspect the new plan for index usage.",
+      "Both executions return the same rows. A performance optimization must preserve semantics, including an explicit stable ordering."
+    ],
+    "language": "Python 3",
+    "code": "import sqlite3\n\ndb = sqlite3.connect(\":memory:\")\ndb.execute(\"CREATE TABLE orders(id INTEGER PRIMARY KEY, customer INT, created INT, amount INT)\")\nrows = [(i, i % 10, i, 100 + i) for i in range(1000)]\ndb.executemany(\"INSERT INTO orders VALUES(?, ?, ?, ?)\", rows)\nquery = \"\"\"SELECT created, amount FROM orders\n           WHERE customer = ? ORDER BY created DESC LIMIT 3\"\"\"\n\ndef plan_flags():\n    plan = db.execute(\"EXPLAIN QUERY PLAN \" + query, (7,)).fetchall()\n    detail = \" \".join(row[3] for row in plan)\n    return \"SCAN orders\" in detail, \"orders_customer_recent\" in detail\n\nbefore = db.execute(query, (7,)).fetchall()\nprint(\"before: scan,index\", plan_flags())\ndb.execute(\"\"\"CREATE INDEX orders_customer_recent\n              ON orders(customer, created DESC, amount)\"\"\")\nafter = db.execute(query, (7,)).fetchall()\nprint(\"after: scan,index\", plan_flags())\nprint(\"rows\", after)\nassert before == after\ndb.close()\n",
+    "expectedOutput": "before: scan,index (True, False)\nafter: scan,index (False, True)\nrows [(997, 1097), (987, 1087), (977, 1077)]\n",
+    "tradeoffs": [
+      "An index consumes space and adds work to inserts, deletes, and updates of indexed values.",
+      "Column order matters: an index whose leading column is unrelated to the filter may not provide the same access path.",
+      "This small in-memory example proves plan selection, not a production speedup; benchmark representative data and write/read ratios."
+    ],
+    "exercise": "Change the query to search all customers by created time. Does this index directly provide the same globally ordered access path?",
+    "solution": "No. Entries are grouped first by customer, so created order is guaranteed within a customer group rather than globally. An index beginning with created better matches the changed query. Do not add both indexes automatically: weigh the new query frequency against storage and write amplification, then inspect the actual plan and measure.",
+    "diagram": [
+      "Predicate customer=7",
+      "Composite index seeks customer group",
+      "Read newest 3 entries",
+      "Return covered columns"
+    ],
+    "sources": [
+      {
+        "title": "SQLite query planner",
+        "url": "https://www.sqlite.org/queryplanner.html"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-14",
+    "title": "Make a transfer atomic with rollback",
+    "concept": "A transfer must debit one account and credit another as one unit. If the destination is missing, the debit must not remain committed. This example uses an explicit transaction and guarded updates in SQLite. The balance constraint is stored in the database, while row counts detect business failures. A successful commit preserves total money; a failed operation rolls back both changes. This demonstrates atomicity and constraints, not PostgreSQL’s MVCC behavior or a complete distributed payment protocol.",
+    "walkthrough": [
+      "Create Alice with 100 units and Bob with 20. Commit this initial state before attempting transfers.",
+      "A conditional debit changes one row only when the sender has enough money. The credit must also change exactly one row.",
+      "Transfer 30 to Bob and commit. Then attempt a transfer to a missing account; the raised error rolls back the earlier debit.",
+      "Read the final balances in a stable order and verify the total remains 120."
+    ],
+    "language": "Python 3",
+    "code": "import sqlite3\n\ndb = sqlite3.connect(\":memory:\", isolation_level=None)\ndb.execute(\"CREATE TABLE accounts(name TEXT PRIMARY KEY, balance INT CHECK(balance >= 0))\")\ndb.executemany(\"INSERT INTO accounts VALUES(?, ?)\", [(\"Alice\", 100), (\"Bob\", 20)])\n\ndef transfer(sender, recipient, amount):\n    if amount <= 0:\n        raise ValueError(\"amount must be positive\")\n    db.execute(\"BEGIN IMMEDIATE\")\n    try:\n        debit = db.execute(\"UPDATE accounts SET balance=balance-? WHERE name=? AND balance>=?\",\n                           (amount, sender, amount))\n        credit = db.execute(\"UPDATE accounts SET balance=balance+? WHERE name=?\",\n                            (amount, recipient))\n        if debit.rowcount != 1 or credit.rowcount != 1:\n            raise ValueError(\"transfer rejected\")\n        db.execute(\"COMMIT\")\n        return \"committed\"\n    except Exception:\n        db.execute(\"ROLLBACK\")\n        return \"rolled back\"\n\nprint(transfer(\"Alice\", \"Bob\", 30))\nprint(transfer(\"Alice\", \"Missing\", 10))\nprint(db.execute(\"SELECT name, balance FROM accounts ORDER BY name\").fetchall())\nprint(\"total\", db.execute(\"SELECT SUM(balance) FROM accounts\").fetchone()[0])\ndb.close()\n",
+    "expectedOutput": "committed\nrolled back\n[('Alice', 70), ('Bob', 50)]\ntotal 120\n",
+    "tradeoffs": [
+      "SQLite allows one writer at a time. Its concurrency model must not be generalized to every relational database.",
+      "A database transaction does not automatically include a remote payment provider or message broker.",
+      "Money should use integer minor units or an exact decimal representation with an explicit currency and rounding policy."
+    ],
+    "exercise": "Add an idempotency key so a retried successful transfer cannot debit twice. Where should the key be stored?",
+    "solution": "Store a unique operation key and a fingerprint of sender, recipient, amount, and currency in the same transaction as the balance changes. Return the saved result when an identical key is retried, and reject key reuse with different parameters. A process-local set is insufficient because it disappears on restart and is not shared by other instances.",
+    "diagram": [
+      "BEGIN transaction",
+      "Guarded debit + validated credit",
+      "Both succeed → COMMIT",
+      "Any failure → ROLLBACK"
+    ],
+    "sources": [
+      {
+        "title": "SQLite transaction semantics",
+        "url": "https://www.sqlite.org/lang_transaction.html"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-15",
+    "title": "Use window frames without losing detail rows",
+    "concept": "GROUP BY collapses rows, while a window function adds a calculation alongside each existing row. This ledger query computes a running balance and identifies the latest transaction per account. The explicit ROWS frame and deterministic order by day then id matter when two events share a timestamp. Without a tie-breaker, row order can be ambiguous; with a peer-based default frame, equal ordering values can also change which rows contribute to a running total.",
+    "walkthrough": [
+      "Insert two same-day transactions for account A, a later withdrawal, and one transaction for B.",
+      "Partition by account to prevent one account’s events from contributing to another account’s balance.",
+      "Order each running sum by day and id, and define the frame from the beginning through the current physical row.",
+      "Compute a second window ordered newest first; its row number can select one latest record per account in an outer query."
+    ],
+    "language": "Python 3",
+    "code": "import sqlite3\n\ndb = sqlite3.connect(\":memory:\")\ndb.execute(\"CREATE TABLE ledger(id INT PRIMARY KEY, account TEXT, day INT, delta INT)\")\ndb.executemany(\"INSERT INTO ledger VALUES(?, ?, ?, ?)\", [\n    (1, \"A\", 1, 100), (2, \"A\", 1, -20),\n    (3, \"A\", 2, -10), (4, \"B\", 1, 50),\n])\nquery = \"\"\"\nSELECT account, id, delta,\n       SUM(delta) OVER (\n           PARTITION BY account ORDER BY day, id\n           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW\n       ) AS balance,\n       ROW_NUMBER() OVER (\n           PARTITION BY account ORDER BY day DESC, id DESC\n       ) AS newest_rank\nFROM ledger\n\"\"\"\nfor row in db.execute(query + \" ORDER BY account, day, id\"):\n    print(row)\nlatest = \"SELECT account, balance FROM (\" + query + \") WHERE newest_rank=1 ORDER BY account\"\nprint(\"latest\", db.execute(latest).fetchall())\ndb.close()\n",
+    "expectedOutput": "('A', 1, 100, 100, 3)\n('A', 2, -20, 80, 2)\n('A', 3, -10, 70, 1)\n('B', 4, 50, 50, 1)\nlatest [('A', 70), ('B', 50)]\n",
+    "tradeoffs": [
+      "Window functions retain detail rows, which is useful for ledgers and rankings but can return far more data than grouped aggregates.",
+      "A deterministic tie-breaker is essential when timestamps are not unique.",
+      "Sorting large partitions can be expensive; inspect plans and memory use, and consider indexes matching partition/order keys."
+    ],
+    "exercise": "Change the running SUM to order only by day and remove the explicit ROWS frame. Explain what can happen to A’s two day-1 rows.",
+    "solution": "The default frame for an ordered aggregate window includes peers sharing the ordering value. Both day-1 rows may therefore show the combined day-1 balance of 80 rather than the sequence 100 then 80. Restore an explicit row frame and a unique id tie-breaker when a transaction-by-transaction balance is intended. The correct choice follows the business meaning of simultaneity.",
+    "diagram": [
+      "Partition account A / account B",
+      "Sort each partition by day,id",
+      "Running SUM preserves rows",
+      "Outer query picks newest_rank=1"
+    ],
+    "sources": [
+      {
+        "title": "SQLite window functions",
+        "url": "https://www.sqlite.org/windowfunctions.html"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-24",
+    "title": "Release resources even when an exception interrupts work",
+    "concept": "RAII connects a resource lifetime to an object lifetime. A unique_ptr has one owner and destroys its object automatically when scope ends, including stack unwinding after an exception. The important design choice is who owns the resource, not where delete is written. This example makes ownership transfer explicit and demonstrates that the resource is released before the catch block runs.",
+    "walkthrough": [
+      "Construct a resource owned by first.",
+      "Move ownership into second; first becomes empty.",
+      "Throw before normal completion. The destructor still runs as second leaves scope."
+    ],
+    "language": "C++17",
+    "code": "#include <iostream>\n#include <memory>\n#include <stdexcept>\n#include <utility>\nstruct Resource {\n    Resource() { std::cout << \"acquired\\n\"; }\n    ~Resource() { std::cout << \"released\\n\"; }\n};\nint main() {\n    try {\n        auto first = std::make_unique<Resource>();\n        auto second = std::move(first);\n        std::cout << \"first empty: \" << (first == nullptr) << '\\n';\n        throw std::runtime_error(\"operation failed\");\n    } catch (const std::exception& error) {\n        std::cout << error.what() << '\\n';\n    }\n}\n",
+    "expectedOutput": "acquired\nfirst empty: 1\nreleased\noperation failed\n",
+    "tradeoffs": [
+      "Prefer unique ownership when sharing is unnecessary; shared_ptr adds reference counting and can form cycles.",
+      "Destructors should not throw during stack unwinding. Resource acquisition belongs in a constructor or factory."
+    ],
+    "exercise": "What changes if first is copied instead of moved?",
+    "solution": "Copying a unique_ptr is a compile error because two independent unique owners would violate its contract. Use a reference for temporary access or explicitly transfer ownership with move.",
+    "diagram": [
+      "Acquire",
+      "Transfer ownership",
+      "Exception",
+      "Automatic cleanup"
+    ],
+    "sources": [
+      {
+        "title": "C++ Core Guidelines",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      }
+    ]
+  },
+  {
+    "lessonId": "lld-01",
+    "title": "Swap a delivery pricing strategy without changing checkout",
+    "concept": "A strategy isolates a behavior that varies. Checkout should calculate an order using a pricing contract rather than branching on every concrete delivery type. This small C++ example uses an abstract interface and two implementations. Amounts are integer cents, which avoids binary floating-point errors for these fixed fees.",
+    "walkthrough": [
+      "Define the fee contract with a virtual destructor.",
+      "Implement flat and weight-based policies.",
+      "Pass each policy by reference to the same total function."
+    ],
+    "language": "C++17",
+    "code": "#include <iostream>\nstruct DeliveryPrice {\n    virtual int fee(int kilograms) const = 0;\n    virtual ~DeliveryPrice() = default;\n};\nstruct FlatPrice : DeliveryPrice {\n    int fee(int) const override { return 200; }\n};\nstruct WeightPrice : DeliveryPrice {\n    int fee(int kilograms) const override { return 100 + 50 * kilograms; }\n};\nint total(int subtotal, int kilograms, const DeliveryPrice& price) {\n    return subtotal + price.fee(kilograms);\n}\nint main() {\n    FlatPrice flat;\n    WeightPrice weight;\n    std::cout << total(1000, 3, flat) << '\\n';\n    std::cout << total(1000, 3, weight) << '\\n';\n}\n",
+    "expectedOutput": "1200\n1250\n",
+    "tradeoffs": [
+      "An interface is useful when policies genuinely vary; a single simple calculation may not need polymorphism.",
+      "Production money types must also enforce currency and overflow constraints."
+    ],
+    "exercise": "Add free delivery for orders over a threshold without adding a delivery-type switch to checkout.",
+    "solution": "Extend the pricing input to include subtotal, or wrap a policy with a discount policy. Keep validation at the boundary and test the threshold exactly.",
+    "diagram": [
+      "Checkout",
+      "Pricing contract",
+      "Selected strategy",
+      "Integer total"
+    ],
+    "sources": [
+      {
+        "title": "C++ Core Guidelines",
+        "url": "https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"
+      }
+    ]
+  },
+  {
+    "lessonId": "lld-08",
+    "title": "Combine TTL expiry with LRU eviction",
+    "concept": "TTL answers whether an entry is fresh; LRU answers which live entry to evict when capacity is full. These are independent policies. An injected clock makes tests deterministic. This compact implementation scans for expired entries on writes, then maintains access order with OrderedDict. It deliberately chooses simplicity over constant-time expiration.",
+    "walkthrough": [
+      "Write A and B at time zero.",
+      "Read A to make B least recently used, then insert C.",
+      "At time six, A has passed its five-unit expiry and is treated as missing."
+    ],
+    "language": "Python 3",
+    "code": "from collections import OrderedDict\nclass Cache:\n    def __init__(self, capacity, ttl):\n        self.capacity, self.ttl, self.items = capacity, ttl, OrderedDict()\n    def get(self, key, now):\n        item = self.items.get(key)\n        if item is None: return None\n        value, expires = item\n        if now >= expires:\n            del self.items[key]\n            return None\n        self.items.move_to_end(key)\n        return value\n    def put(self, key, value, now):\n        for old, (_, expires) in list(self.items.items()):\n            if now >= expires: del self.items[old]\n        self.items[key] = (value, now + self.ttl)\n        self.items.move_to_end(key)\n        while len(self.items) > self.capacity:\n            self.items.popitem(last=False)\ncache = Cache(2, 5)\ncache.put(\"A\", 10, 0); cache.put(\"B\", 20, 0)\nprint(cache.get(\"A\", 1))\ncache.put(\"C\", 30, 2)\nprint(cache.get(\"B\", 2))\nprint(cache.get(\"A\", 6))\n",
+    "expectedOutput": "10\nNone\nNone\n",
+    "tradeoffs": [
+      "Reads and LRU updates are expected O(1), but write-time expiry cleanup is O(n). A heap or timer wheel trades complexity for faster cleanup.",
+      "This process-local model is not thread safe and does not prevent a cache stampede."
+    ],
+    "exercise": "What if several requests miss the same expensive key simultaneously?",
+    "solution": "Use a per-key single-flight mechanism to share one computation. Bound waiting time and decide whether stale data is acceptable while refreshing.",
+    "diagram": [
+      "Read key",
+      "Check expiry",
+      "Refresh recency",
+      "Evict if full"
+    ],
+    "sources": []
+  },
+  {
+    "lessonId": "lld-04",
+    "title": "Make invalid state transitions impossible",
+    "concept": "A state machine names valid states and the events allowed between them. An elevator should not move with its doors open. The transition table below concentrates that invariant in one place and rejects invalid events before updating state. This models one car and omits dispatching between multiple cars.",
+    "walkthrough": [
+      "Start idle with closed doors.",
+      "Open the doors, then attempt an invalid move.",
+      "Close the doors, move, and process arrival."
+    ],
+    "language": "Python 3",
+    "code": "class Elevator:\n    transitions = {\n        (\"idle\", \"open\"): \"doors_open\",\n        (\"doors_open\", \"close\"): \"idle\",\n        (\"idle\", \"move\"): \"moving\",\n        (\"moving\", \"arrive\"): \"idle\",\n    }\n    def __init__(self): self.state = \"idle\"\n    def handle(self, event):\n        next_state = self.transitions.get((self.state, event))\n        if next_state is None:\n            raise ValueError(f\"{event} not allowed from {self.state}\")\n        self.state = next_state\n        return self.state\ncar = Elevator()\nprint(car.handle(\"open\"))\ntry: car.handle(\"move\")\nexcept ValueError as error: print(error)\nfor event in [\"close\", \"move\", \"arrive\"]:\n    print(car.handle(event))\n",
+    "expectedOutput": "doors_open\nmove not allowed from doors_open\nidle\nmoving\nidle\n",
+    "tradeoffs": [
+      "A transition table makes allowed behavior auditable; state objects help when each state has substantial behavior.",
+      "Physical safety requires sensors, interlocks, and fail-safe control beyond an application state machine."
+    ],
+    "exercise": "Add an emergency state. Which events must become invalid?",
+    "solution": "Permit emergency from active states and allow recovery only after an explicit safety check. Define whether pending requests survive recovery and test every transition.",
+    "diagram": [
+      "Event",
+      "Validate current state",
+      "Apply transition",
+      "Emit action"
+    ],
+    "sources": []
+  },
+  {
+    "lessonId": "hld-08",
+    "title": "Refill a token bucket with a deterministic clock",
+    "concept": "A token bucket allows short bursts while limiting the long-term request rate. Tokens accumulate at a fixed rate up to a capacity; each accepted request spends one token. The example uses supplied times rather than sleeping. It is a single-process model of the algorithm, not a distributed limiter.",
+    "walkthrough": [
+      "A capacity of two admits two simultaneous requests.",
+      "The third request is rejected because the bucket is empty.",
+      "Half a second adds half a token; at one second a complete token is available."
+    ],
+    "language": "Python 3",
+    "code": "class Bucket:\n    def __init__(self, capacity, rate):\n        self.capacity, self.rate = capacity, rate\n        self.tokens, self.last = float(capacity), 0.0\n    def allow(self, now):\n        if now < self.last: raise ValueError(\"clock moved backward\")\n        self.tokens = min(self.capacity, self.tokens + (now-self.last)*self.rate)\n        self.last = now\n        if self.tokens < 1: return False\n        self.tokens -= 1\n        return True\nbucket = Bucket(2, 1)\nfor now in [0, 0, 0, 0.5, 1, 5]:\n    print(now, bucket.allow(now))\n",
+    "expectedOutput": "0 True\n0 True\n0 False\n0.5 False\n1 True\n5 True\n",
+    "tradeoffs": [
+      "A central store can enforce a shared quota but adds latency and an availability dependency.",
+      "A distributed implementation needs an atomic read-refill-debit operation and an explicit clock and failure policy."
+    ],
+    "exercise": "If two servers each use this bucket independently, what is the effective global capacity?",
+    "solution": "It can double to four and the sustained rate can double too. Use a shared atomic state or deliberately allocated local quotas if the limit is meant to be global.",
+    "diagram": [
+      "Elapsed time",
+      "Refill to capacity",
+      "Check token",
+      "Accept or reject"
+    ],
+    "sources": []
+  },
+  {
+    "lessonId": "lld-10",
+    "title": "Keep an order and its outgoing event atomic",
+    "concept": "A transactional outbox closes the gap between saving application state and scheduling a message. The order and outbox event are committed together in one database. A separate worker publishes pending events. The worker can still publish twice after a crash, so consumers must handle repeated event IDs.",
+    "walkthrough": [
+      "Create both tables in an in-memory database.",
+      "Write an order and an event inside one transaction.",
+      "Read the pending event as a worker would; publishing and marking delivered are separate operations."
+    ],
+    "language": "Python 3",
+    "code": "import sqlite3\nimport json\nwith sqlite3.connect(\":memory:\") as db:\n    db.executescript(\"\"\"\n    CREATE TABLE orders(id TEXT PRIMARY KEY, amount INT);\n    CREATE TABLE outbox(id TEXT PRIMARY KEY, body TEXT, sent INT DEFAULT 0);\n    \"\"\")\n    with db:\n        db.execute(\"INSERT INTO orders VALUES (?, ?)\", (\"o1\", 1200))\n        body = json.dumps({\"order_id\": \"o1\", \"amount\": 1200})\n        db.execute(\"INSERT INTO outbox(id,body) VALUES (?,?)\", (\"e1\", body))\n    event_id, body = db.execute(\"SELECT id,body FROM outbox WHERE sent=0\").fetchone()\n    print(\"publish\", event_id, json.loads(body)[\"order_id\"])\n    with db: db.execute(\"UPDATE outbox SET sent=1 WHERE id=?\", (event_id,))\n    print(\"pending\", db.execute(\"SELECT COUNT(*) FROM outbox WHERE sent=0\").fetchone()[0])\n",
+    "expectedOutput": "publish e1 o1\npending 0\n",
+    "tradeoffs": [
+      "The database transaction guarantees the order and event record together, not exactly-once network delivery.",
+      "Workers need retries, observability, retention, and coordination when multiple workers read the outbox."
+    ],
+    "exercise": "Where can a crash cause duplicate delivery?",
+    "solution": "After the broker accepts the event but before sent=1 commits. The next worker retries e1. A consumer should record e1 and its business update atomically so the duplicate has no second effect.",
+    "diagram": [
+      "Order request",
+      "Order + outbox transaction",
+      "Publisher",
+      "Idempotent consumer"
+    ],
+    "sources": [
+      {
+        "title": "SQLite transaction semantics",
+        "url": "https://www.sqlite.org/lang_transaction.html"
+      }
+    ]
+  },
+  {
+    "lessonId": "hld-05",
+    "title": "Reject conflicting retries with an idempotency key",
+    "concept": "An idempotency key identifies one intended operation. Reusing a key with identical parameters should return the original result; reusing it with different parameters should fail. This deterministic in-memory ledger models that contract with integer cents. A real payment service must persist the operation record and balance update atomically and serialize concurrent attempts.",
+    "walkthrough": [
+      "Debit 25 cents from A and credit B.",
+      "Retry the identical operation; the cached response is returned.",
+      "Reuse the key for a different amount and reject it before touching balances."
+    ],
+    "language": "Python 3",
+    "code": "class Ledger:\n    def __init__(self):\n        self.balances = {\"A\": 100, \"B\": 0}\n        self.operations = {}\n    def transfer(self, key, sender, recipient, cents):\n        fingerprint = (sender, recipient, cents)\n        if key in self.operations:\n            previous, result = self.operations[key]\n            if previous != fingerprint: raise ValueError(\"conflicting retry\")\n            return result\n        if sender == recipient or cents <= 0: raise ValueError(\"invalid transfer\")\n        if self.balances[sender] < cents: raise ValueError(\"insufficient funds\")\n        self.balances[sender] -= cents\n        self.balances[recipient] += cents\n        result = \"accepted\"\n        self.operations[key] = (fingerprint, result)\n        return result\nledger = Ledger()\nprint(ledger.transfer(\"request-1\", \"A\", \"B\", 25))\nprint(ledger.transfer(\"request-1\", \"A\", \"B\", 25))\ntry: ledger.transfer(\"request-1\", \"A\", \"B\", 30)\nexcept ValueError as error: print(error)\nprint(ledger.balances)\n",
+    "expectedOutput": "accepted\naccepted\nconflicting retry\n{'A': 75, 'B': 25}\n",
+    "tradeoffs": [
+      "An in-memory dictionary loses its protection on restart and is not shared across instances.",
+      "Real ledgers usually use immutable entries, reconciliation, currency-aware amounts, and durable uniqueness constraints."
+    ],
+    "exercise": "Why is a separate check-then-insert of the key unsafe under concurrency?",
+    "solution": "Two workers can both observe no record and both debit. Use a database uniqueness constraint and transaction or another atomic serialization mechanism that covers the business mutation.",
+    "diagram": [
+      "Key + parameters",
+      "Check prior operation",
+      "Atomic ledger update",
+      "Save response"
+    ],
+    "sources": []
+  },
+  {
+    "lessonId": "hld-03",
+    "title": "Merge a feed from independently ordered streams",
+    "concept": "Fanout-on-read combines recent posts from followed users at request time. A heap can merge k streams that are already sorted by timestamp, producing the first m feed items in O(k + m log k). This example ranks by time only. A production ranking service may use relevance and must enforce visibility rules before returning posts.",
+    "walkthrough": [
+      "Each stream is newest first.",
+      "Put the newest item from each stream in a max-heap using negative timestamps.",
+      "After selecting an item, push only the next item from that same stream."
+    ],
+    "language": "Python 3",
+    "code": "import heapq\n\ndef feed(streams, limit):\n    heap = [(-posts[0][0], user, 0) for user, posts in enumerate(streams) if posts]\n    heapq.heapify(heap)\n    result = []\n    while heap and len(result) < limit:\n        _, user, index = heapq.heappop(heap)\n        result.append(streams[user][index][1])\n        index += 1\n        if index < len(streams[user]):\n            heapq.heappush(heap, (-streams[user][index][0], user, index))\n    return result\nstreams = [[(10, \"A1\"), (5, \"A2\")], [(9, \"B1\"), (8, \"B2\")], [(7, \"C1\")]]\nprint(feed(streams, 4))\n",
+    "expectedOutput": "['A1', 'B1', 'B2', 'C1']\n",
+    "tradeoffs": [
+      "Fanout-on-read avoids writing every post to every follower inbox, but read latency grows with the number of streams.",
+      "Hybrid designs precompute feeds for ordinary accounts and merge high-fanout accounts at read time."
+    ],
+    "exercise": "How would you paginate without relying on an offset into a changing feed?",
+    "solution": "Use a stable cursor containing a ranking boundary and a tie-breaker. Define whether a session sees a snapshot or live inserts; otherwise items can duplicate or disappear across pages.",
+    "diagram": [
+      "Followed streams",
+      "Heap frontier",
+      "Newest item",
+      "Advance one stream"
+    ],
+    "sources": []
+  },
+  {
+    "lessonId": "lesson-28",
+    "title": "Rank normalized embeddings with cosine similarity",
+    "concept": "Cosine similarity measures the angle between nonzero vectors, reducing sensitivity to magnitude. The vectors here are hand-written to make the arithmetic inspectable; they are not outputs from an embedding model. A zero vector has no direction, so the example rejects it explicitly.",
+    "walkthrough": [
+      "Compute a dot product and the two vector norms.",
+      "Divide by the norm product.",
+      "Sort candidates by similarity, using the document name to break ties deterministically."
+    ],
+    "language": "Python 3",
+    "code": "from math import sqrt\n\ndef cosine(a, b):\n    if len(a) != len(b): raise ValueError(\"dimension mismatch\")\n    denominator = sqrt(sum(x*x for x in a) * sum(y*y for y in b))\n    if not denominator: raise ValueError(\"zero vector\")\n    return sum(x*y for x, y in zip(a, b)) / denominator\nquery = [1, 0]\ndocuments = {\"cache\": [2, 0], \"database\": [1, 1], \"network\": [0, 1]}\nranking = sorted(documents, key=lambda name: (-cosine(query, documents[name]), name))\nfor name in ranking:\n    print(name, f\"{cosine(query, documents[name]):.3f}\")\n",
+    "expectedOutput": "cache 1.000\ndatabase 0.707\nnetwork 0.000\n",
+    "tradeoffs": [
+      "A similarity score is not a calibrated probability of relevance.",
+      "Approximate nearest-neighbor indexing trades recall for speed; measure retrieval quality on your actual queries."
+    ],
+    "exercise": "If every candidate vector is normalized to unit length, how does scoring simplify?",
+    "solution": "The denominator becomes one, so cosine similarity equals the dot product. Normalize queries with the same policy and handle zero vectors before indexing.",
+    "diagram": [
+      "Query vector",
+      "Normalize",
+      "Dot products",
+      "Rank candidates"
+    ],
+    "sources": []
+  },
+  {
+    "lessonId": "lesson-29",
+    "title": "Compute one causal attention row by hand",
+    "concept": "Attention forms a weighted average of value vectors using query-key compatibility. This example computes scaled dot products, excludes keys after the current position, and applies a numerically stable softmax. It illustrates one head and one position; it omits learned projections, residual connections, normalization, and training.",
+    "walkthrough": [
+      "Use the query [1,0] at position one.",
+      "Mask position two so the current token cannot see the future.",
+      "Subtract the largest remaining score before exponentiating, then normalize and combine the values."
+    ],
+    "language": "Python 3",
+    "code": "from math import exp, sqrt\nquery = [1.0, 0.0]\nkeys = [[1.0, 0.0], [0.0, 1.0], [9.0, 9.0]]\nvalues = [[2.0, 0.0], [0.0, 4.0], [100.0, 100.0]]\nposition = 1\nscores = [sum(q*k for q, k in zip(query, key))/sqrt(len(query)) for key in keys[:position+1]]\nmaximum = max(scores)\nweights = [exp(score-maximum) for score in scores]\nweights = [weight/sum(weights) for weight in weights]\noutput = [sum(w*value[d] for w, value in zip(weights, values)) for d in range(2)]\nprint(\"weights\", [round(w, 3) for w in weights])\nprint(\"output\", [round(x, 3) for x in output])\n",
+    "expectedOutput": "weights [0.67, 0.33]\noutput [1.34, 1.321]\n",
+    "tradeoffs": [
+      "The ordinary full attention matrix grows quadratically with sequence length.",
+      "Masking future positions is essential for causal training; padding masks solve a different problem."
+    ],
+    "exercise": "What happens if the mask is removed in this example?",
+    "solution": "The large future key receives a dominant score and its value contaminates the current output. During causal training that exposes information the model will not have at generation time.",
+    "diagram": [
+      "Query × keys",
+      "Scale + causal mask",
+      "Stable softmax",
+      "Weighted values"
+    ],
+    "sources": [
+      {
+        "title": "Attention Is All You Need",
+        "url": "https://arxiv.org/abs/1706.03762"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-30",
+    "title": "Budget context before adding retrieval results",
+    "concept": "A context window is shared by instructions, conversation, retrieved material, tool definitions, and reserved generated output. Token counts depend on the model tokenizer; this example takes measured counts as input rather than pretending whitespace counts are tokens. It greedily packs documents in relevance order while respecting a hard budget.",
+    "walkthrough": [
+      "Reserve space for instructions, history, tools, and the future answer.",
+      "Compute the remaining retrieval budget.",
+      "Keep relevant documents that fit, recording skipped documents for diagnosis."
+    ],
+    "language": "Python 3",
+    "code": "window = 1200\nfixed = {\"instructions\": 120, \"history\": 250, \"tools\": 80, \"output_reserve\": 300}\nbudget = window - sum(fixed.values())\nif budget < 0: raise ValueError(\"fixed context exceeds budget\")\ndocuments = [(\"A\", 200), (\"B\", 300), (\"C\", 100)]\nchosen, skipped, used = [], [], 0\nfor name, measured_tokens in documents:\n    if used + measured_tokens <= budget:\n        chosen.append(name)\n        used += measured_tokens\n    else: skipped.append(name)\nprint(\"retrieval budget\", budget)\nprint(\"chosen\", chosen)\nprint(\"skipped\", skipped)\nprint(\"unused\", budget-used)\n",
+    "expectedOutput": "retrieval budget 450\nchosen ['A', 'C']\nskipped ['B']\nunused 150\n",
+    "tradeoffs": [
+      "Greedy packing is simple but can omit a large highly relevant document; chunking or constrained selection may improve coverage.",
+      "Reserve margin for serialization overhead and tokenizer changes, then measure actual request usage."
+    ],
+    "exercise": "Why should truncation happen at document boundaries rather than arbitrary characters?",
+    "solution": "Arbitrary truncation can remove qualifiers or split citations from claims. Prefer coherent chunks with source metadata and account for that metadata in the budget.",
+    "diagram": [
+      "Window limit",
+      "Reserve fixed context",
+      "Pack evidence",
+      "Reserve response"
+    ],
+    "sources": []
+  },
+  {
+    "lessonId": "lesson-31",
+    "title": "Retrieve evidence only from documents the user may read",
+    "concept": "Retrieval needs access control before evidence enters a model prompt. This example uses simple lexical overlap so the security boundary is easy to inspect. It filters by an authoritative reader list and then ranks the eligible documents. In production, tenant and document permissions must come from trusted identity and authorization services.",
+    "walkthrough": [
+      "Build an eligible collection for the authenticated user.",
+      "Score only eligible documents against the query.",
+      "Return evidence identifiers along with text so citations and audits can trace the source."
+    ],
+    "language": "Python 3",
+    "code": "import re\n\ndef words(text): return set(re.findall(r\"[a-z]+\", text.lower()))\ndef retrieve(user, query, documents, k=2):\n    scored = []\n    for doc in documents:\n        if user not in doc[\"readers\"]: continue\n        score = len(words(query) & words(doc[\"text\"]))\n        if score: scored.append((-score, doc[\"id\"], doc[\"text\"]))\n    return [(identity, text) for _, identity, text in sorted(scored)[:k]]\ndocuments = [\n    {\"id\": \"public\", \"readers\": {\"Anish\", \"Brother\"}, \"text\": \"Cache entries expire after TTL.\"},\n    {\"id\": \"private\", \"readers\": {\"Anish\"}, \"text\": \"Cache production credentials are confidential.\"},\n]\nfor identity, text in retrieve(\"Brother\", \"cache production\", documents):\n    print(identity, text)\n",
+    "expectedOutput": "public Cache entries expire after TTL.\n",
+    "tradeoffs": [
+      "Lexical overlap misses semantic matches; embeddings and reranking improve relevance but do not replace authorization.",
+      "Retrieved text remains untrusted data. Source inclusion is not proof that an answer faithfully follows it."
+    ],
+    "exercise": "Why is filtering after taking the global top two results problematic?",
+    "solution": "Unauthorized results can crowd out authorized evidence, reducing recall, and may leak through caches or logs. Enforce access before model context construction and isolate caches by permission scope.",
+    "diagram": [
+      "Authenticated identity",
+      "Permission filter",
+      "Retrieve and rank",
+      "Evidence + citations"
+    ],
+    "sources": []
+  },
+  {
+    "lessonId": "lesson-37",
+    "title": "Validate a tool request before dispatching it",
+    "concept": "MCP tools expose a name and an input schema, while the host controls how tool use fits into the application. This standard-library demonstration is a boundary validator, not a full MCP server or transport implementation. It accepts only an explicitly listed tool and enforces its argument shape before calling ordinary application code.",
+    "walkthrough": [
+      "Select a tool from the host-owned registry.",
+      "Reject unknown arguments and invalid values.",
+      "Run the implementation and return a text content block."
+    ],
+    "language": "Python 3",
+    "code": "def dispatch(name, arguments):\n    if name != \"sum_numbers\": raise ValueError(\"unknown tool\")\n    if not isinstance(arguments, dict) or set(arguments) != {\"numbers\"}:\n        raise ValueError(\"expected only numbers\")\n    numbers = arguments[\"numbers\"]\n    if not isinstance(numbers, list) or len(numbers) > 100:\n        raise ValueError(\"expected at most 100 numbers\")\n    if any(type(value) is not int for value in numbers):\n        raise ValueError(\"integers required\")\n    return {\"content\": [{\"type\": \"text\", \"text\": str(sum(numbers))}]}\nprint(dispatch(\"sum_numbers\", {\"numbers\": [3, 4]})[\"content\"][0][\"text\"])\ntry: dispatch(\"sum_numbers\", {\"numbers\": [True]})\nexcept ValueError as error: print(error)\n",
+    "expectedOutput": "7\nintegers required\n",
+    "tradeoffs": [
+      "Schema validation checks shape, not authorization. A valid request can still be forbidden for a particular user.",
+      "A complete MCP implementation also handles negotiation, transport, cancellation, errors, and protocol versions; use a maintained SDK."
+    ],
+    "exercise": "Where should an approval requirement for a destructive tool be enforced?",
+    "solution": "In the trusted host or execution layer immediately before the side effect, tied to the exact operation. Tool descriptions and model output cannot grant their own permission.",
+    "diagram": [
+      "Tool name + arguments",
+      "Host policy",
+      "Schema validation",
+      "Implementation"
+    ],
+    "sources": [
+      {
+        "title": "MCP tools specification",
+        "url": "https://modelcontextprotocol.io/specification/2025-11-25/server/tools"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-38",
+    "title": "Separate lifecycle policy from the action itself",
+    "concept": "A hook runs at a named lifecycle event. This example is a provider-neutral policy function for a before-write event: it inspects a proposed relative path and returns a decision without modifying files. It demonstrates the separation between policy and side effects. It is not a drop-in Claude Code hook configuration; real event names, fields, and exit semantics must follow the host documentation.",
+    "walkthrough": [
+      "Represent the proposed action as an event.",
+      "Reject absolute paths, parent traversal, and a protected destination.",
+      "Only an allow result lets the caller proceed to its separate execution step."
+    ],
+    "language": "Python 3",
+    "code": "from pathlib import PurePosixPath\n\ndef before_write(event):\n    if event.get(\"event\") != \"before_write\": return \"ignore\"\n    path = PurePosixPath(event[\"path\"])\n    if path.is_absolute() or \"..\" in path.parts: return \"deny: outside workspace\"\n    if path.parts and path.parts[0] == \"secrets\": return \"deny: protected path\"\n    return \"allow\"\nfor name in [\"src/main.cpp\", \"../outside.txt\", \"secrets/key.txt\"]:\n    print(name, before_write({\"event\": \"before_write\", \"path\": name}))\n",
+    "expectedOutput": "src/main.cpp allow\n../outside.txt deny: outside workspace\nsecrets/key.txt deny: protected path\n",
+    "tradeoffs": [
+      "Lexical path checks alone do not stop symlink escapes or races. Real enforcement must use resolved paths and OS-level permissions.",
+      "Define fail-open versus fail-closed behavior deliberately; observability hooks and authorization hooks have different requirements."
+    ],
+    "exercise": "Why should the hook avoid logging the entire event payload?",
+    "solution": "Events can contain source code, secrets, or personal data. Record only the fields needed to explain the decision, redact sensitive values, and apply retention limits.",
+    "diagram": [
+      "Before action event",
+      "Policy check",
+      "Allow / deny",
+      "Separate executor"
+    ],
+    "sources": [
+      {
+        "title": "Claude Code hook lifecycle reference",
+        "url": "https://code.claude.com/docs/en/hooks"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-39",
+    "title": "Load reusable instructions only when their scope matches",
+    "concept": "A skill packages procedural instructions and supporting material for a recurring task. Keep a small discovery catalog in context and load detailed instructions only for relevant work. This deterministic example models that selection boundary using explicit task tags. It does not execute instructions, install skills, or claim to reproduce a particular agent host.",
+    "walkthrough": [
+      "Index each skill by a short name, description, and supported task tags.",
+      "Choose candidates from trusted task classification.",
+      "Load detailed content only for selected candidates; selection itself grants no additional tool permissions."
+    ],
+    "language": "Python 3",
+    "code": "catalog = {\n    \"sql-review\": {\"description\": \"Review SQL plans and indexes\", \"tags\": {\"sql\", \"database\"}},\n    \"cpp-review\": {\"description\": \"Review C++ ownership and bounds\", \"tags\": {\"cpp\", \"memory\"}},\n}\ninstructions = {\n    \"sql-review\": \"Inspect predicates, cardinality, indexes, and the query plan.\",\n    \"cpp-review\": \"Inspect ownership, lifetimes, bounds, and exception safety.\",\n}\ndef select_skills(task_tags):\n    return sorted(name for name, meta in catalog.items() if meta[\"tags\"] & task_tags)\nselected = select_skills({\"cpp\"})\nprint(\"selected\", selected)\nfor name in selected: print(instructions[name])\nprint(\"permissions unchanged\")\n",
+    "expectedOutput": "selected ['cpp-review']\nInspect ownership, lifetimes, bounds, and exception safety.\npermissions unchanged\n",
+    "tradeoffs": [
+      "Good descriptions reduce accidental activation; broad keyword matching can load irrelevant or malicious instructions.",
+      "Skills are procedural context, not a replacement for authorization, tests, or hard execution boundaries."
+    ],
+    "exercise": "How would you prevent a retrieved document from activating an unrelated privileged skill?",
+    "solution": "Separate user intent from retrieved content, use trusted routing criteria, and enforce tool permissions outside the skill text. Validate a skill source before trusting its procedures.",
+    "diagram": [
+      "Small catalog",
+      "Scope match",
+      "Load procedure",
+      "Existing permissions"
+    ],
+    "sources": [
+      {
+        "title": "Agent Skills specification",
+        "url": "https://agentskills.io/specification"
+      }
+    ]
+  },
+  {
+    "lessonId": "lesson-40",
+    "title": "Catch a regression that an average score hides",
+    "concept": "An evaluation set should test important behaviors separately. This example grades structured outputs with deterministic checks for answer correctness, citation presence, and latency. A total score is useful, but per-case failures tell you what changed. The set is intentionally small and illustrative; production evaluation needs representative, versioned data and multiple kinds of grading.",
+    "walkthrough": [
+      "Keep expected outcomes separate from system predictions.",
+      "Evaluate each criterion independently.",
+      "Report failed dimensions per case before calculating the aggregate."
+    ],
+    "language": "Python 3",
+    "code": "cases = [\n    {\"id\": \"known\", \"answer\": \"42\", \"needs_citation\": True},\n    {\"id\": \"unknown\", \"answer\": \"I do not know\", \"needs_citation\": False},\n]\npredictions = {\n    \"known\": {\"answer\": \"42\", \"citations\": [], \"latency_ms\": 120},\n    \"unknown\": {\"answer\": \"I do not know\", \"citations\": [], \"latency_ms\": 900},\n}\npassed = 0\nfor case in cases:\n    result = predictions[case[\"id\"]]\n    checks = {\n        \"answer\": result[\"answer\"] == case[\"answer\"],\n        \"citation\": not case[\"needs_citation\"] or bool(result[\"citations\"]),\n        \"latency\": result[\"latency_ms\"] <= 500,\n    }\n    failures = [name for name, ok in checks.items() if not ok]\n    print(case[\"id\"], \"failed\", \", \".join(failures) or \"none\")\n    passed += not failures\nprint(\"all criteria passed\", passed, \"/\", len(cases))\n",
+    "expectedOutput": "known failed citation\nunknown failed latency\nall criteria passed 0 / 2\n",
+    "tradeoffs": [
+      "Citation presence does not establish that the citation supports the answer; add grounding checks.",
+      "Latency measurements need repeat runs and percentiles under representative load. Exact-string grading can penalize valid paraphrases."
+    ],
+    "exercise": "What dimensions would you add for an agent allowed to modify files?",
+    "solution": "Check task success, unauthorized changes, scope of writes, recovery after tool failure, and reproducibility. Grade the final artifacts and action trace, not just the final natural-language answer.",
+    "diagram": [
+      "Versioned cases",
+      "System outputs",
+      "Per-dimension checks",
+      "Regression report"
+    ],
+    "sources": []
+  }
+]

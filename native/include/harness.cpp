@@ -5,7 +5,7 @@ int main() {
         for (const auto& test : cases) {
             ++index;
             try {
-                json actual = solve(test.at("input"));
+                json actual = switchSolve(test.at("input"));
                 bool custom = !test.contains("expected");
                 std::cout << (custom ? "OUTPUT" : "TEST " + std::to_string(index) + ": " + (actual == test["expected"] ? "PASS" : "FAIL")) << "\n" << actual.dump(2) << "\n";
                 if (!custom && actual != test["expected"]) std::cout << "Expected: " << test["expected"].dump() << "\n";
