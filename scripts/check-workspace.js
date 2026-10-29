@@ -56,7 +56,7 @@ assert.equal(saved.profiles.Learner.code['dsa-002:cpp:v2'], problem.solutions.cp
   assert.equal(message.cppApiVersion, 2);
   assert.equal(message.code, problem.solutions.cpp);
   assert.equal(message.practice, true);
-  assert.equal(message.input, JSON.stringify(problem.tests));
+  assert.equal(message.input, JSON.stringify(problem.sampleTests||problem.tests));
   assert.equal(nodes['#output'].textContent, 'TEST 1: PASS');
   assert.equal(nodes['#run'].disabled, false);
   await evaluate('run(true)');

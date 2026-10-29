@@ -13,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         for (title, action, key) in [("Undo", "undo:", "z"), ("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] { edit.submenu?.addItem(withTitle: title, action: Selector(action), keyEquivalent: key) }
         NSApp.mainMenu = menu
         let config = WKWebViewConfiguration()
-        config.userContentController.addUserScript(WKUserScript(source: "window.switchCapabilities = {cppApiVersion: 2, appVersion: '2.3.0'};", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        config.userContentController.addUserScript(WKUserScript(source: "window.switchCapabilities = {cppApiVersion: 2, runnerApiVersion: 3, cppBitsHeader: true, appVersion: '2.4.0'};", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         config.userContentController.add(self, name: "runCode"); config.userContentController.add(self, name: "export")
         web = WKWebView(frame: .zero, configuration: config); web.navigationDelegate = self; web.uiDelegate = self
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 860), styleMask: [.titled,.closable,.miniaturizable,.resizable], backing: .buffered, defer: false)
@@ -42,7 +42,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }
         guard message.name == "runCode", let body=message.body as? [String:Any], let id=body["id"] as? String, let language=body["language"] as? String, let code=body["code"] as? String, let input=body["input"] as? String, code.utf8.count < 500000, input.utf8.count < 1000000 else { return }
         runner.async {
-            let result=self.execute(language:language,code:code,input:input,practice:body["practice"] as? Bool ?? false,problemId:body["problemId"] as? String)
+            let result:Any
+            if body["runnerApiVersion"] as? Int == 3 {
+                result=self.executeDetailed(language:language,code:code,input:input,practice:body["practice"] as? Bool ?? false,problemId:body["problemId"] as? String)
+            } else {
+                result=self.execute(language:language,code:code,input:input,practice:body["practice"] as? Bool ?? false,problemId:body["problemId"] as? String)
+            }
             DispatchQueue.main.async {
                 if let json=try? JSONSerialization.data(withJSONObject:[id,result]), let args=String(data:json,encoding:.utf8) { self.web.evaluateJavaScript("window.switchNativeResult(...\(args))",completionHandler:nil) }
             }
@@ -68,17 +73,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }catch{return (-1,error.localizedDescription)}
     }
     func execute(language:String,code:String,input:String,practice:Bool = false,problemId:String? = nil)->String {
+        executeDetailed(language:language,code:code,input:input,practice:practice,problemId:problemId)["output"] as? String ?? "Runner failed."
+    }
+    func failedRun(_ text:String)->[String:Any] { ["output":text,"completed":false,"results":[]] }
+    func executeDetailed(language:String,code:String,input:String,practice:Bool = false,problemId:String? = nil)->[String:Any] {
         let dir=FileManager.default.temporaryDirectory.appendingPathComponent("switch-"+UUID().uuidString)
         do {
             try FileManager.default.createDirectory(at:dir,withIntermediateDirectories:true);defer{try? FileManager.default.removeItem(at:dir)}
             var program:String;var args:[String]
+            let reportURL=dir.appendingPathComponent("test-results.json")
             switch language {
             case "python":
-                guard let python=executable("python3") else{return "Python 3 is not installed. Install Python 3, or use the built-in JavaScript runner."}
+                guard let python=executable("python3") else{return failedRun("Python 3 is not installed. Install Python 3, or use the built-in JavaScript runner.")}
                 let suffix = practice ? (try String(contentsOf:Bundle.main.resourceURL!.appendingPathComponent("include/harness.py"),encoding:.utf8)) : ""
-                try (code+"\n"+suffix).write(to:dir.appendingPathComponent("main.py"),atomically:true,encoding:.utf8);program=python;args=["-I","main.py"]
+                try (code+"\n"+suffix).write(to:dir.appendingPathComponent("main.py"),atomically:true,encoding:.utf8);program=python;args=["-I","main.py"]+(practice ? [reportURL.path] : [])
             case "cpp":
-                guard let compiler=executable("clang++") else{return "C++ compiler not found. Install Xcode Command Line Tools."}
+                guard let compiler=executable("clang++") else{return failedRun("C++ compiler not found. Install Xcode Command Line Tools.")}
                 let includeDir=Bundle.main.resourceURL!.appendingPathComponent("include")
                 let suffix=practice ? (try String(contentsOf:includeDir.appendingPathComponent("harness.cpp"),encoding:.utf8)) : ""
                 let prefix=practice ? "#include \"switch_runtime.hpp\"\n" : ""
@@ -86,21 +96,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 if practice {
                     let data=try Data(contentsOf:includeDir.appendingPathComponent("cpp-adapters.json"))
                     let adapters=try JSONDecoder().decode([String:String].self,from:data)
-                    guard let id=problemId,let source=adapters[id] else { return "This problem has no C++ test runner. Reopen it in the updated app." }
+                    guard let id=problemId,let source=adapters[id] else { return failedRun("This problem has no C++ test runner. Reopen it in the updated app.") }
                     adapter=source
                 }
                 try (prefix+"#line 1 \"solution.cpp\"\n"+code+"\n#line 1 \"runner.cpp\"\n"+adapter+"\n"+suffix).write(to:dir.appendingPathComponent("main.cpp"),atomically:true,encoding:.utf8)
                 let (status,text)=invoke(compiler,["-std=c++17","-O0","-I",includeDir.path,"main.cpp","-o","main"],dir,"",30)
-                if status != 0{return "Compilation failed:\n"+text};program=dir.appendingPathComponent("main").path;args=[]
+                if status != 0{return failedRun("Compilation failed:\n"+text)};program=dir.appendingPathComponent("main").path;args=practice ? [reportURL.path] : []
             case "java":
-                guard let compiler=executable("javac"),let java=executable("java") else{return "Java JDK not found. Install a JDK or use JavaScript."}
+                guard let compiler=executable("javac"),let java=executable("java") else{return failedRun("Java JDK not found. Install a JDK or use JavaScript.")}
                 try code.write(to:dir.appendingPathComponent("Main.java"),atomically:true,encoding:.utf8)
                 let(status,text)=invoke(compiler,["Main.java"],dir,"",8)
-                if status != 0{return "Compilation failed (a JDK is required):\n"+text};program=java;args=["-Xmx128m","-cp",dir.path,"Main"]
-            default:return "Unsupported language"
+                if status != 0{return failedRun("Compilation failed (a JDK is required):\n"+text)};program=java;args=["-Xmx128m","-cp",dir.path,"Main"]
+            default:return failedRun("Unsupported language")
             }
-            let(status,text)=invoke(program,args,dir,input,5);return text+(status==0 ? (text.isEmpty ? "Completed with no output." : "") : "\nExit status: \(status)")
-        }catch{return error.localizedDescription}
+            let(status,text)=invoke(program,args,dir,input,5)
+            let output=text+(status==0 ? (text.isEmpty ? "Completed with no output." : "") : "\nExit status: \(status)")
+            guard practice, status == 0,
+                  let inputData=input.data(using:.utf8), let cases=try JSONSerialization.jsonObject(with:inputData) as? [[String:Any]],
+                  let data=try? Data(contentsOf:reportURL), data.count < 4000000,
+                  let report=try JSONSerialization.jsonObject(with:data) as? [String:Any],
+                  let results=report["results"] as? [[String:Any]], results.count == cases.count,
+                  results.enumerated().allSatisfy({ ($0.element["index"] as? Int) == $0.offset+1 && $0.element["pass"] is Bool })
+            else { return failedRun(output) }
+            return ["output":output,"completed":true,"results":results]
+        }catch{return failedRun(error.localizedDescription)}
     }
 }
 if CommandLine.arguments.contains("--self-test") {
@@ -109,6 +128,21 @@ if CommandLine.arguments.contains("--self-test") {
     let python=runner.execute(language:"python",code:"def solve(input):\n    return max(input)",input:cases,practice:true)
     print("Python runner:\n"+python)
     var passed=python.contains("TEST 2: PASS") && !python.contains("FAIL") && !python.contains("ERROR")
+    let cppHeader=runner.executeDetailed(language:"cpp",code:"#include <bits/stdc++.h>\nusing namespace std;\nint maximumElement(const vector<int>& nums) { variant<int,string> value=*max_element(nums.begin(),nums.end()); return get<int>(value); }",input:cases,practice:true,problemId:"dsa-001")
+    let headerResults=cppHeader["results"] as? [[String:Any]] ?? []
+    let headerPassed=(cppHeader["completed"] as? Bool == true) && headerResults.count == 2 && headerResults.allSatisfy { $0["pass"] as? Bool == true }
+    print("bits/stdc++.h + structured C++ results: \(headerPassed ? "PASS" : "FAIL")")
+    if !headerPassed { print(cppHeader) }; passed = passed && headerPassed
+    let wrong=runner.executeDetailed(language:"python",code:"def solve(input):\n    print('TEST 1: PASS')\n    return 0",input:cases,practice:true)
+    let wrongResults=wrong["results"] as? [[String:Any]] ?? []
+    let wrongPassed=(wrong["completed"] as? Bool == true) && wrongResults.count == 2 && wrongResults.allSatisfy { $0["pass"] as? Bool == false }
+    print("Debug output cannot mark a wrong solution accepted: \(wrongPassed ? "PASS" : "FAIL")");passed = passed && wrongPassed
+    let early=runner.executeDetailed(language:"python",code:"raise SystemExit(0)",input:cases,practice:true)
+    let earlyPassed=early["completed"] as? Bool == false
+    print("Early exit without a test report: \(earlyPassed ? "PASS" : "FAIL")");passed = passed && earlyPassed
+    let compileFailure=runner.executeDetailed(language:"cpp",code:"this will not compile",input:cases,practice:true,problemId:"dsa-001")
+    let compilePassed=(compileFailure["completed"] as? Bool == false) && (compileFailure["output"] as? String ?? "").contains("Compilation failed")
+    print("Compilation failure cannot be accepted: \(compilePassed ? "PASS" : "FAIL")");passed = passed && compilePassed
     do {
         let data=try Data(contentsOf:Bundle.main.resourceURL!.appendingPathComponent("include/cpp-smoke.json"))
         guard let samples=try JSONSerialization.jsonObject(with:data) as? [[String:Any]], !samples.isEmpty else { exit(1) }

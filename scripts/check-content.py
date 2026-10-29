@@ -83,7 +83,7 @@ with tempfile.TemporaryDirectory(prefix='switch-check-') as folder:
         if result.returncode:
             print(result.stderr)
             sys.exit(1)
-        cases = [dict(id=i, name=p['id'], **test) for i, p in enumerate(batch) for test in p['tests']]
+        cases = [{**test, 'id':i, 'name':p['id']+': '+test.get('name','sample')} for i, p in enumerate(batch) for test in p['tests']]
         result = subprocess.run([str(binary)], input=json.dumps(cases), capture_output=True, text=True, timeout=30)
         if result.returncode:
             print(result.stderr)

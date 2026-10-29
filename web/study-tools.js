@@ -1,4 +1,55 @@
 // Friendly test inputs. JSON remains the runner's transport format only.
+function indentationUnit(text,language){
+  const leading=text.split('\n').map(line=>line.match(/^[\t ]+(?=\S)/)?.[0]).filter(Boolean);
+  if(leading.some(s=>s.includes('\t')))return '\t';
+  return ' '.repeat(leading.some(s=>s.length===2)?2:language==='javascript'?2:4);
+}
+function editorEdit(text,start,end,key,language,shift=false){
+  const unit=indentationUnit(text,language),lineStart=text.lastIndexOf('\n',start-1)+1;
+  const before=text.slice(lineStart,start),indent=before.match(/^[\t ]*/)[0];
+  if(key==='Enter'){
+    const stripped=before.replace(language==='python'?/\s*#.*$/:/\s*\/\/.*$/,'').trimEnd();
+    const opens=/[\{\[\(]$/.test(stripped)||(language==='python'&&/:$/.test(stripped));
+    let insert='\n'+indent+(opens?unit:'');
+    const close={'{':'}','[':']','(':')'}[stripped.at(-1)];
+    const after=text.slice(end).match(/^[\t ]*([}\])])/);
+    if(close&&after?.[1]===close){insert+='\n'+indent;end+=after[0].length-1}
+    return {start,end,insert,anchor:start+1+indent.length+(opens?unit.length:0),focus:start+1+indent.length+(opens?unit.length:0)};
+  }
+  if(key==='Tab'&&(start!==end||shift)){
+    const last=end>start&&text[end-1]==='\n'?end-1:end;
+    const blockEnd=text.indexOf('\n',last),stop=blockEnd<0?text.length:blockEnd;
+    const lines=text.slice(lineStart,stop).split('\n');let firstDelta=0,totalDelta=0;
+    const insert=lines.map((line,i)=>{const remove=shift?(line.startsWith('\t')?1:Math.min(line.match(/^ */)[0].length,unit.length)):0;const delta=shift?-remove:unit.length;if(!i)firstDelta=delta;totalDelta+=delta;return shift?line.slice(remove):unit+line}).join('\n');
+    return {start:lineStart,end:stop,insert,anchor:Math.max(lineStart,start+firstDelta),focus:Math.max(lineStart,end+totalDelta)};
+  }
+  if(key==='Tab')return {start,end,insert:unit,anchor:start+unit.length,focus:start+unit.length};
+  if(['}',']',')'].includes(key)&&!before.trim()){
+    let trim=indent.endsWith('\t')?1:Math.min(unit.length,indent.length);
+    const clean=text.slice(0,start).replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/g,s=>s.replace(/[^\n]/g,' '));
+    const opener={'}':'{',']':'[',')':'('}[key];let balance=0;
+    for(let i=clean.length-1;i>=0;i--){
+      if(clean[i]===key)balance++;
+      if(clean[i]===opener){if(balance)balance--;else{const target=clean.slice(clean.lastIndexOf('\n',i)+1,i).match(/^[\t ]*/)[0].length;trim=Math.max(0,indent.length-target);break}}
+    }
+    return {start:start-trim,end:end+(start===end&&text[end]===key?1:0),insert:key,anchor:start-trim+1,focus:start-trim+1};
+  }
+  return null;
+}
+function bindCodeEditor(editor,language){
+  editor.onkeydown=e=>{
+    if(e.isComposing)return;
+    if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();run(false,!!e.shiftKey);return}
+    if(e.metaKey||e.ctrlKey||e.altKey)return;
+    const change=editorEdit(editor.value,editor.selectionStart,editor.selectionEnd,e.key,language,e.shiftKey);
+    if(!change)return;e.preventDefault();
+    editor.focus();editor.setSelectionRange(change.start,change.end);
+    // Native insertion keeps undo/redo on browsers that support it.
+    let inserted=false;if(typeof document.execCommand==='function')inserted=document.execCommand('insertText',false,change.insert);
+    if(!inserted){editor.setRangeText(change.insert,change.start,change.end,'end');editor.dispatchEvent(new Event('input',{bubbles:true}))}
+    editor.setSelectionRange(change.anchor,change.focus);
+  };
+}
 function inputSpecs(p){
   const sample=p.example.input;
   if(sample!==null&&typeof sample==='object'&&!Array.isArray(sample))return Object.entries(sample).map(([name,value])=>({name,value}));
