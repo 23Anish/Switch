@@ -20,6 +20,7 @@ const evaluate = code => vm.runInContext(code, context);
 evaluate(fs.readFileSync(path.join(root, 'web/app.js'), 'utf8'));
 evaluate(fs.readFileSync(path.join(root, 'web/study-tools.js'), 'utf8'));
 evaluate(fs.readFileSync(path.join(root, 'web/features.js'), 'utf8').replace(/render\(\);\s*$/, ''));
+evaluate(fs.readFileSync(path.join(root, 'web/upgrades.js'), 'utf8').replace(/render\(\);\s*$/, ''));
 assert.equal(evaluate('lang'), 'cpp', 'C++ is the default');
 evaluate('render = () => {}; page = "problem"; selected = "dsa-002"; profile().code["dsa-002:cpp"] = "old JSON draft";');
 assert.equal(evaluate('codeKey(D[0], "cpp")'), 'dsa-002:cpp:v2');

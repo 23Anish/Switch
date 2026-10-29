@@ -5,7 +5,7 @@ on:
       version:
         description: Release tag
         required: true
-        default: v2.2.0
+        default: v2.3.0
 permissions:
   contents: write
 jobs:
@@ -21,4 +21,4 @@ jobs:
           SWITCH_TAG: ${{ inputs.version }}
         run: |
           shasum -a 256 dist/Switch-macOS.zip > dist/SHA256SUMS.txt
-          gh release create "$SWITCH_TAG" dist/Switch-macOS.zip dist/SHA256SUMS.txt --target "$GITHUB_SHA" --title "Switch 2.2 — A clearer path to your next role" --notes-file RELEASE_NOTES.md
+          gh release create "$SWITCH_TAG" dist/Switch-macOS.zip dist/SHA256SUMS.txt --target "$GITHUB_SHA" --title "Switch 2.3 — See the idea move" --notes-file RELEASE_NOTES.md

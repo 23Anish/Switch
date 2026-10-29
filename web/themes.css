@@ -54,15 +54,15 @@
 }
 :root[data-theme="midnight"] {
   color-scheme: dark;
-  --paper: #101820;
-  --surface: #17232e;
-  --ink: #edf3f7;
+  --paper: #111824;
+  --surface: #182230;
+  --ink: #e7edf6;
   --body: #bdcbd5;
-  --muted: #9aafbc;
-  --line: #2d414f;
-  --green: #83d4c2;
+  --muted: #9aabc1;
+  --line: #304355;
+  --green: #a1d9c4;
   --lime: #a9e4d6;
-  --soft: #203540;
+  --soft: #24384a;
   --hover: #243c47;
   --code: #0d151d;
   --code-text: #e2efee;

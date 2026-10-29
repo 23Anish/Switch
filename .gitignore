@@ -10,3 +10,5 @@ cpp-part*.json
 web/data.js
 native/include/cpp-adapters.json
 native/include/cpp-smoke.json
+
+.superdesign/

@@ -1,0 +1,41 @@
+#!/usr/bin/env node
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');
+let serial=0, pending=new Map(), listeners={};
+const counter={},previous={},next={},play={setAttribute(){}};
+const control={querySelector(s){return {'.trace-counter':counter,'[data-trace-action="previous"]':previous,'[data-trace-action="next"]':next,'[data-trace-action="play"]':play}[s]}};
+const nodes={'[data-player="home"]':control,'#home-trace-caption':{},'#home-queue':{},'#home-visited':{}};
+const context=vm.createContext({console,window:{},document:{querySelector:s=>nodes[s]||null,querySelectorAll:()=>[],addEventListener:(k,v)=>listeners[k]=v},navigator:{},location:{protocol:'file:'},localStorage:{getItem:()=>null,setItem(){}},setTimeout:fn=>{pending.set(++serial,fn);return serial},clearTimeout:id=>pending.delete(id)});
+const run=code=>vm.runInContext(code,context);
+run(fs.readFileSync(path.join(root,'web/data.js'),'utf8'));
+for(const file of ['diagrams.js','app.js','study-tools.js','features.js','experience.js','upgrades.js','immersive.js'])run(fs.readFileSync(path.join(root,'web',file),'utf8').replace(/render\(\);\s*$/,''));
+assert.equal(pending.size,0,'Traces must never autoplay on load');
+const frames=JSON.parse(run('JSON.stringify(homeBfs)'));
+assert.equal(frames.length,8);
+assert.deepEqual(frames[0].queue,[1]);
+assert.deepEqual(frames[1].queue,[2,3]);
+assert.deepEqual(frames[2].queue,[3,4,5]);
+assert.deepEqual(frames.at(-1).visited,[1,2,3,4,5,6,7]);
+assert.deepEqual(frames.at(-1).queue,[]);
+for(const f of frames){assert.equal(new Set([...f.queue,...f.visited]).size,f.queue.length+f.visited.length);assert.ok(f.text)}
+run('startPlayback("home")');assert.equal(pending.size,1);assert.equal(play.textContent,'Ⅱ Pause');
+let tick=()=>{const [id,fn]=pending.entries().next().value;pending.delete(id);fn()};
+tick();assert.equal(run('homeFrame'),1);assert.ok(nodes['#home-queue'].innerHTML.includes('2'));
+run('stopPlayback()');assert.equal(pending.size,0);
+run('startPlayback("home")');while(pending.size)tick();
+assert.equal(run('homeFrame'),7);assert.equal(run('playback'),null);assert.equal(next.disabled,true);
+run('startPlayback("home")');assert.equal(run('homeFrame'),0,'Replay starts from the first frame');
+context.document.hidden=true;listeners.visibilitychange();assert.equal(pending.size,0,'Hidden tabs stop playing');
+const lessons=JSON.parse(run('JSON.stringify(L)')),traces=JSON.parse(run('JSON.stringify(LEARNING_TRACES)'));
+assert.equal(traces.length,6);assert.equal(new Set(traces.map(t=>t.lessonId)).size,6);
+for(const t of traces){assert.ok(lessons.some(l=>l.id===t.lessonId));assert.equal(t.nodes.length,t.roles.length);assert.ok(t.limit);for(const s of t.steps){assert.ok(s.label&&s.detail&&s.state);assert.ok(s.active.length);assert.ok(s.active.every(i=>Number.isInteger(i)&&i>=0&&i<t.nodes.length))}}
+assert.equal(traces.find(t=>t.lessonId==='lesson-01').steps.at(-1).state.time,110);
+assert.equal(traces.find(t=>t.lessonId==='lesson-08').steps.at(-1).state.ACK,300);
+assert.deepEqual(traces.find(t=>t.lessonId==='lld-08').steps.at(-1).state['MRU → LRU'],['D','C']);
+assert.equal(traces.find(t=>t.lessonId==='hld-08').steps.at(-1).state.tokens,3);
+assert.ok(run('learningHero(D[0],false)').includes('C++17'));
+assert.ok(run('dashboard()').includes('data-player="home"'));
+run('selected="lesson-01"');assert.ok(run('lesson()').includes('data-player="lesson"'));
+run('selected="dsa-076"');assert.ok(run('problem()').includes('data-open-pattern="tree-level"'));
+assert.ok(run('visualLab()').includes('data-player="pattern"'));
+console.log('BFS queue states, explicit playback, pause/replay, hidden-tab cleanup, six theory traces and linked page rendering passed.');

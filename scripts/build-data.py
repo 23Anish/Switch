@@ -31,3 +31,7 @@ examples=json.loads((root / 'theory-examples.json').read_text())
 with (root / 'web/data.js').open('a') as bundle:
     bundle.write('window.THEORY_EXAMPLES = ' + json.dumps(examples, ensure_ascii=False) + ';\n')
 print(f'Bundled {len(examples)} worked theory examples')
+
+with (root / 'web/data.js').open('a') as bundle:
+    for name, key in [('patterns.json','PATTERNS'),('interviews.json','INTERVIEWS'),('learning-traces.json','LEARNING_TRACES')]:
+        bundle.write('window.' + key + ' = ' + json.dumps(json.loads((root/name).read_text()),ensure_ascii=False) + ';\n')

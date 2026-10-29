@@ -1,0 +1,569 @@
+[
+  {
+    "lessonId": "lesson-01",
+    "title": "One CPU, two requests",
+    "intro": "A small schedule shows how I/O waiting can overlap useful CPU work. Times are illustrative milliseconds.",
+    "nodes": [
+      "Ready queue",
+      "CPU",
+      "I/O wait",
+      "Completed"
+    ],
+    "roles": [
+      "Tasks that can run wait here until the scheduler selects them.",
+      "Only one task computes at a time on this single CPU.",
+      "A blocked task waits for an external event and does not consume CPU here.",
+      "A task completes only after its CPU and I/O phases finish."
+    ],
+    "steps": [
+      {
+        "label": "Both requests arrive",
+        "detail": "A and B each need 10 ms of CPU, followed by 90 ms of I/O.",
+        "active": [
+          0
+        ],
+        "state": {
+          "time": 0,
+          "ready": [
+            "A",
+            "B"
+          ],
+          "done": []
+        }
+      },
+      {
+        "label": "Run A",
+        "detail": "A uses the only CPU for 10 ms. B remains ready.",
+        "active": [
+          1
+        ],
+        "state": {
+          "time": "0–10",
+          "CPU": "A",
+          "ready": [
+            "B"
+          ]
+        }
+      },
+      {
+        "label": "A blocks; run B",
+        "detail": "A waits for I/O until time 100. B can now use the CPU.",
+        "active": [
+          1,
+          2
+        ],
+        "state": {
+          "time": "10–20",
+          "CPU": "B",
+          "I/O": [
+            "A"
+          ]
+        }
+      },
+      {
+        "label": "Both wait",
+        "detail": "B starts its own 90 ms wait. The CPU has no runnable request.",
+        "active": [
+          2
+        ],
+        "state": {
+          "time": "20–100",
+          "CPU": "idle",
+          "I/O": [
+            "A",
+            "B"
+          ]
+        }
+      },
+      {
+        "label": "A finishes",
+        "detail": "A’s I/O completes at 100 ms. B still waits until 110 ms.",
+        "active": [
+          3,
+          2
+        ],
+        "state": {
+          "time": 100,
+          "done": [
+            "A"
+          ],
+          "I/O": [
+            "B"
+          ]
+        }
+      },
+      {
+        "label": "B finishes",
+        "detail": "Both requests complete in 110 ms, rather than 200 ms if run strictly sequentially.",
+        "active": [
+          3
+        ],
+        "state": {
+          "time": 110,
+          "done": [
+            "A",
+            "B"
+          ],
+          "CPU work": 20
+        }
+      }
+    ],
+    "limit": "Assume independent I/O, no contention, zero scheduling overhead, and no final CPU phase. This is concurrency, not simultaneous CPU computation."
+  },
+  {
+    "lessonId": "lesson-08",
+    "title": "Cumulative acknowledgments and a lost segment",
+    "intro": "Follow three byte ranges. ACK values name the next byte the receiver needs.",
+    "nodes": [
+      "Sender",
+      "Network",
+      "Receiver",
+      "ACK"
+    ],
+    "roles": [
+      "The sender retains unacknowledged data so it can retransmit it.",
+      "This example deliberately loses one segment. Real networks can also reorder or duplicate packets.",
+      "The receiver exposes ordered bytes to the application. This example buffers out-of-order bytes.",
+      "A cumulative ACK confirms a contiguous prefix and identifies the next missing byte."
+    ],
+    "steps": [
+      {
+        "label": "Send bytes 0–99",
+        "detail": "The first 100 bytes reach the receiver.",
+        "active": [
+          0,
+          1,
+          2
+        ],
+        "state": {
+          "received": "0–99",
+          "next needed": 100
+        }
+      },
+      {
+        "label": "ACK 100",
+        "detail": "The receiver has a contiguous prefix through byte 99.",
+        "active": [
+          3
+        ],
+        "state": {
+          "ACK": 100,
+          "acknowledged": "0–99"
+        }
+      },
+      {
+        "label": "Lose bytes 100–199",
+        "detail": "The next segment is lost in transit.",
+        "active": [
+          1
+        ],
+        "state": {
+          "lost": "100–199",
+          "next needed": 100
+        }
+      },
+      {
+        "label": "Bytes 200–299 arrive",
+        "detail": "Later bytes do not close the gap. The receiver still cumulatively acknowledges only the prefix.",
+        "active": [
+          2,
+          3
+        ],
+        "state": {
+          "buffered": "200–299",
+          "ACK": 100
+        }
+      },
+      {
+        "label": "Retransmit the gap",
+        "detail": "After loss detection, the sender retransmits bytes 100–199.",
+        "active": [
+          0,
+          1
+        ],
+        "state": {
+          "retransmit": "100–199",
+          "buffered": "200–299"
+        }
+      },
+      {
+        "label": "ACK 300",
+        "detail": "The gap closes. Bytes 0 through 299 now form one contiguous prefix.",
+        "active": [
+          2,
+          3
+        ],
+        "state": {
+          "ACK": 300,
+          "deliverable": "0–299"
+        }
+      }
+    ],
+    "limit": "Byte numbers start at zero for teaching; connection setup and sequence-number wraparound are omitted. This trace does not prescribe a specific loss-detection algorithm."
+  },
+  {
+    "lessonId": "lesson-14",
+    "title": "Two buyers, one remaining item",
+    "intro": "A guarded write protects inventory even when both buyers initially see the same value.",
+    "nodes": [
+      "Read",
+      "Guarded update",
+      "Commit",
+      "Retry / reject"
+    ],
+    "roles": [
+      "A read alone does not reserve inventory. Another transaction can observe the same count.",
+      "An atomic conditional update changes inventory only if a positive count remains.",
+      "A successful transaction makes the reservation durable under the database’s commit guarantees.",
+      "Zero affected rows means the precondition failed; the application must handle that outcome."
+    ],
+    "steps": [
+      {
+        "label": "Both observe one item",
+        "detail": "A and B read stock=1. Neither read reserves it.",
+        "active": [
+          0
+        ],
+        "state": {
+          "stock": 1,
+          "A read": 1,
+          "B read": 1
+        }
+      },
+      {
+        "label": "A wins the conditional write",
+        "detail": "A executes UPDATE inventory SET stock=stock-1 WHERE id=7 AND stock>0.",
+        "active": [
+          1
+        ],
+        "state": {
+          "stock": 0,
+          "A affected rows": 1
+        }
+      },
+      {
+        "label": "A commits",
+        "detail": "A’s transaction commits its reservation.",
+        "active": [
+          2
+        ],
+        "state": {
+          "stock": 0,
+          "A": "reserved"
+        }
+      },
+      {
+        "label": "B checks the precondition",
+        "detail": "B’s conditional update finds stock=0 and changes no row.",
+        "active": [
+          1,
+          3
+        ],
+        "state": {
+          "stock": 0,
+          "B affected rows": 0
+        }
+      },
+      {
+        "label": "Report sold out",
+        "detail": "B must not create a successful reservation from its stale initial read.",
+        "active": [
+          3
+        ],
+        "state": {
+          "A": "reserved",
+          "B": "sold out",
+          "stock": 0
+        }
+      }
+    ],
+    "limit": "Illustrates an atomic guarded-write design. Exact waiting, visibility, and retry behavior depend on the database and isolation level; multi-row invariants need additional design."
+  },
+  {
+    "lessonId": "lld-08",
+    "title": "TTL expiration meets LRU ordering",
+    "intro": "Capacity is two entries. Order is shown from most recently used to least recently used; an entry expires at now >= expires.",
+    "nodes": [
+      "Cache API",
+      "Hash map",
+      "LRU list",
+      "Expiry clock"
+    ],
+    "roles": [
+      "The API defines get/put behavior, absence, expiration, and eviction.",
+      "The map locates each entry and its linked-list node.",
+      "Successful access moves a live entry to the front. Eviction removes the least recently used live candidate.",
+      "The injected clock makes the equality boundary deterministic and testable."
+    ],
+    "steps": [
+      {
+        "label": "Insert A",
+        "detail": "At time 0, store A with expiry time 5.",
+        "active": [
+          0,
+          1,
+          2
+        ],
+        "state": {
+          "now": 0,
+          "keys": [
+            "A"
+          ],
+          "MRU → LRU": [
+            "A"
+          ]
+        }
+      },
+      {
+        "label": "Insert B",
+        "detail": "B expires at time 10; capacity is now full.",
+        "active": [
+          1,
+          2
+        ],
+        "state": {
+          "now": 0,
+          "keys": [
+            "A",
+            "B"
+          ],
+          "MRU → LRU": [
+            "B",
+            "A"
+          ]
+        }
+      },
+      {
+        "label": "Read A at time 4",
+        "detail": "A is still live, so return its value and move it to the front.",
+        "active": [
+          2,
+          3
+        ],
+        "state": {
+          "now": 4,
+          "MRU → LRU": [
+            "A",
+            "B"
+          ],
+          "result": "A value"
+        }
+      },
+      {
+        "label": "Read A at time 5",
+        "detail": "The equality boundary means A has expired. Remove it from both map and list.",
+        "active": [
+          1,
+          2,
+          3
+        ],
+        "state": {
+          "now": 5,
+          "MRU → LRU": [
+            "B"
+          ],
+          "result": "miss"
+        }
+      },
+      {
+        "label": "Insert C, then D",
+        "detail": "C fills the spare slot; D then evicts B, the least recently used entry.",
+        "active": [
+          1,
+          2
+        ],
+        "state": {
+          "now": 5,
+          "MRU → LRU": [
+            "D",
+            "C"
+          ],
+          "evicted": "B"
+        }
+      }
+    ],
+    "limit": "This is a sequential trace with lazy expiration. Production concurrency, background cleanup, and clock behavior need explicit contracts."
+  },
+  {
+    "lessonId": "hld-08",
+    "title": "Token bucket under a burst",
+    "intro": "Capacity is 3 tokens and refill rate is 1 token per second. Each admitted request consumes one token.",
+    "nodes": [
+      "Gateway",
+      "Atomic bucket",
+      "Allow",
+      "Reject"
+    ],
+    "roles": [
+      "The gateway identifies the quota key and applies a known policy.",
+      "Refill and consume must act atomically for the same bucket; otherwise concurrent callers can overspend.",
+      "An allowed request consumes one token before entering the protected service.",
+      "A rejected request must follow the API’s retry contract; retries also need a bound."
+    ],
+    "steps": [
+      {
+        "label": "Full bucket",
+        "detail": "At time 0, the bucket contains its capacity of three tokens.",
+        "active": [
+          1
+        ],
+        "state": {
+          "time": 0,
+          "tokens": 3
+        }
+      },
+      {
+        "label": "Admit the first request",
+        "detail": "Consume one token.",
+        "active": [
+          1,
+          2
+        ],
+        "state": {
+          "time": 0,
+          "tokens": 2,
+          "allowed": 1
+        }
+      },
+      {
+        "label": "Admit two more",
+        "detail": "Three requests at the same instant consume the full burst allowance.",
+        "active": [
+          1,
+          2
+        ],
+        "state": {
+          "time": 0,
+          "tokens": 0,
+          "allowed": 3
+        }
+      },
+      {
+        "label": "Reject the fourth",
+        "detail": "No token remains at time 0.",
+        "active": [
+          3
+        ],
+        "state": {
+          "time": 0,
+          "tokens": 0,
+          "fourth request": "rejected"
+        }
+      },
+      {
+        "label": "One second passes",
+        "detail": "Refill one token, capped at capacity. One new request can be admitted.",
+        "active": [
+          1,
+          2
+        ],
+        "state": {
+          "time": 1,
+          "tokens after request": 0,
+          "new request": "allowed"
+        }
+      },
+      {
+        "label": "Idle until time 5",
+        "detail": "Refill is capped at 3; the bucket never grows without bound.",
+        "active": [
+          1
+        ],
+        "state": {
+          "time": 5,
+          "tokens": 3
+        }
+      }
+    ],
+    "limit": "One quota key, an authoritative monotonic clock, and atomic updates are assumed. This does not implement a distributed consistency protocol."
+  },
+  {
+    "lessonId": "lesson-31",
+    "title": "RAG: relevant does not always mean usable",
+    "intro": "Trace a query against two public documents and one restricted document. Authorization is part of retrieval.",
+    "nodes": [
+      "Query + identity",
+      "Retrieve",
+      "Rank + context",
+      "Answer + evidence"
+    ],
+    "roles": [
+      "The request carries the caller’s identity and permission scope.",
+      "Retrieve candidate evidence under the caller’s access rules.",
+      "Rank usable passages and fit them into the context budget with stable document IDs.",
+      "Generate only claims supported by the selected evidence; check citations and handle insufficient evidence."
+    ],
+    "steps": [
+      {
+        "label": "Ask about the retry limit",
+        "detail": "The caller can read documents A and B, but not restricted document C.",
+        "active": [
+          0
+        ],
+        "state": {
+          "allowed documents": [
+            "A",
+            "B"
+          ],
+          "restricted": [
+            "C"
+          ]
+        }
+      },
+      {
+        "label": "Retrieve usable candidates",
+        "detail": "A says retries are capped at 3. B describes backoff. C must not enter the model context.",
+        "active": [
+          1
+        ],
+        "state": {
+          "candidates": [
+            "A: retry cap 3",
+            "B: backoff"
+          ],
+          "excluded": [
+            "C"
+          ]
+        }
+      },
+      {
+        "label": "Build the evidence context",
+        "detail": "Keep the supporting passages and their document identifiers.",
+        "active": [
+          2
+        ],
+        "state": {
+          "context": [
+            "A",
+            "B"
+          ],
+          "supported claim": "retry cap = 3"
+        }
+      },
+      {
+        "label": "Answer with support",
+        "detail": "Answer that the documented cap is 3 and cite A. Do not invent the total deadline if the evidence does not state it.",
+        "active": [
+          3
+        ],
+        "state": {
+          "answer": "At most 3 retries [A]",
+          "deadline": "not established"
+        }
+      },
+      {
+        "label": "Evaluate the result",
+        "detail": "Check that the cap is supported, the citation points to A, and no restricted content leaked.",
+        "active": [
+          3
+        ],
+        "state": {
+          "support check": "pass",
+          "access check": "pass",
+          "unknowns": "deadline"
+        }
+      }
+    ],
+    "limit": "A deterministic example of a retrieval pipeline, not a live model call. Ranking quality and answer support still need a representative evaluation set."
+  }
+]

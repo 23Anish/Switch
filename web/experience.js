@@ -97,7 +97,7 @@
       { page: 'lld', icon: '◇', title: 'Low-level design', description: 'Turn requirements into clear objects, contracts, and maintainable interactions.', ...lld, unit: 'lessons' },
       { page: 'hld', icon: '▦', title: 'High-level design', description: 'Reason about capacity, data flow, reliability, and the trade-offs of scale.', ...hld, unit: 'lessons' },
       { page: 'ai', icon: '✧', title: 'AI engineering', description: 'Connect model theory to retrieval, agents, MCP, evaluation, and production systems.', ...ai, unit: 'lessons' },
-      { page: 'companies', icon: '◎', title: 'Company preparation', description: 'Focused Google and Microsoft tracks, interview drills, and readiness checklists.', done: companyDone, total: checklist.length, unit: 'checklist items' }
+      { page: 'companies', icon: '◎', title: 'Company preparation', description: 'Focused Google, Microsoft, and NVIDIA tracks, interview drills, and readiness checklists.', done: companyDone, total: checklist.length, unit: 'checklist items' }
     ];
     const practice = [next, ...D.filter(problem => !learner.done[problem.id] && problem.id !== next?.id)].filter(Boolean).slice(0, 3);
     const recommendedLessons = [
@@ -107,29 +107,7 @@
     ].filter(Boolean);
 
     return `<div class="experience-home">
-      <section class="landing-hero" aria-labelledby="landing-title">
-        <div class="landing-copy">
-          <p class="hero-kicker"><span aria-hidden="true">↗</span> YOUR NEXT CHAPTER STARTS HERE</p>
-          <h1 class="landing-title" id="landing-title">Build depth.<br><em>Make the switch.</em></h1>
-          <p class="landing-description">One thoughtful workspace for algorithms, systems, and modern AI. Learn the idea, write the code, and build the confidence to explain it.</p>
-          <div class="hero-actions">
-            ${next ? `<button class="primary" data-problem="${next.id}">${recentWork ? 'Continue your practice' : 'Start your first problem'} <span aria-hidden="true">→</span></button>` : ''}
-            <button data-go="plan">Explore the roadmap <span aria-hidden="true">↗</span></button>
-          </div>
-          <div class="hero-facts hero-metrics"><span><strong>${D.length}</strong> curated problems</span><span><strong>${L.length}</strong> study lessons</span><span><strong>C++ · Python</strong> reference code</span></div>
-        </div>
-        <div class="landing-route landing-visual" aria-label="A repeatable learning loop">
-          <div class="route-header"><span class="eyebrow">A LITTLE BETTER, EVERY SESSION</span><span aria-hidden="true">↗</span></div>
-          <button class="route-node" data-go="core"><span class="route-index">01</span><span><strong>Understand the idea</strong><small>First principles, diagrams, and examples</small></span><span aria-hidden="true">↗</span></button>
-          <div class="route-connector" aria-hidden="true"></div>
-          <button class="route-node route-current" data-go="dsa"><span class="route-index">02</span><span><strong>Put it into practice</strong><small>Code, test, and compare approaches</small></span><span aria-hidden="true">↗</span></button>
-          <div class="route-connector" aria-hidden="true"></div>
-          <button class="route-node" data-go="visual"><span class="route-index">03</span><span><strong>Explain why it works</strong><small>Trace the pattern and its trade-offs</small></span><span aria-hidden="true">↗</span></button>
-          <div class="route-connector" aria-hidden="true"></div>
-          <button class="route-node" data-go="review"><span class="route-index">04</span><span><strong>Make it stick</strong><small>${reviews.length ? `${reviews.length} problem${reviews.length === 1 ? '' : 's'} ready for recall` : 'Return to what you learned, over time'}</small></span><span aria-hidden="true">↗</span></button>
-          <p class="route-caption">Progress comes from the loop, not the streak.</p>
-        </div>
-      </section>
+      ${learningHero(next, recentWork)}
 
       <section class="home-stats" aria-label="Your saved progress">
         <button class="home-stat" data-go="dsa"><span>Problems solved</span><strong>${completed}<small> / ${D.length}</small></strong>${progressMeter(completed, D.length, 'Problems completed')}</button>
@@ -156,7 +134,7 @@
         </div>
       </section>
 
-      <section class="company-strip" aria-label="Company preparation"><div><p class="eyebrow">PREPARE WITH A DESTINATION</p><h2>Aim high. Build the foundations.</h2></div><div class="company-strip-names"><button class="linkbutton" data-go="companies">Google <span aria-hidden="true">↗</span></button><button class="linkbutton" data-go="companies">Microsoft <span aria-hidden="true">↗</span></button><span>Meta</span><span>NVIDIA</span></div><p>Focused tracks for Google and Microsoft, plus broad software and systems preparation. No claimed company question frequency.</p></section>
+      <section class="company-strip" aria-label="Company preparation"><div><p class="eyebrow">PREPARE WITH A DESTINATION</p><h2>Aim high. Build the foundations.</h2></div><div class="company-strip-names"><button class="linkbutton" data-go="companies">Google <span aria-hidden="true">↗</span></button><button class="linkbutton" data-go="companies">Microsoft <span aria-hidden="true">↗</span></button><span>Meta</span><button class="linkbutton" data-go="companies">NVIDIA <span aria-hidden="true">↗</span></button></div><p>Focused tracks for Google, Microsoft, and NVIDIA, plus broad software and systems preparation. No claimed company question frequency.</p></section>
       <div class="workspace-note"><span aria-hidden="true">◌</span><p>Your notes, code, and progress stay in this browser or Mac app. Keep a backup to move between devices.</p><button class="linkbutton" data-go="settings">Back up your progress <span aria-hidden="true">↗</span></button></div>
     </div>`;
   };
@@ -358,5 +336,4 @@
     bindProblemResults();
   };
 
-  render();
 })();

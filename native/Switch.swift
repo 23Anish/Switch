@@ -13,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         for (title, action, key) in [("Undo", "undo:", "z"), ("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] { edit.submenu?.addItem(withTitle: title, action: Selector(action), keyEquivalent: key) }
         NSApp.mainMenu = menu
         let config = WKWebViewConfiguration()
-        config.userContentController.addUserScript(WKUserScript(source: "window.switchCapabilities = {cppApiVersion: 2, appVersion: '2.2.0'};", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        config.userContentController.addUserScript(WKUserScript(source: "window.switchCapabilities = {cppApiVersion: 2, appVersion: '2.3.0'};", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         config.userContentController.add(self, name: "runCode"); config.userContentController.add(self, name: "export")
         web = WKWebView(frame: .zero, configuration: config); web.navigationDelegate = self; web.uiDelegate = self
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 860), styleMask: [.titled,.closable,.miniaturizable,.resizable], backing: .buffered, defer: false)

@@ -1,0 +1,5088 @@
+[
+  {
+    "id": "binary",
+    "title": "Binary search",
+    "category": "Arrays & search",
+    "problemId": "dsa-037",
+    "useWhen": "Search sorted data or locate a monotone boundary.",
+    "invariant": "The target, if present, stays inside [lo, hi].",
+    "time": "O(log n)",
+    "space": "O(1)",
+    "pitfall": "A binary search on the answer requires a monotone feasibility predicate.",
+    "values": [
+      2,
+      5,
+      8,
+      12,
+      16,
+      19,
+      23,
+      31
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "First comparison",
+        "detail": "12 < 19. Discard indices 0 through 3.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "lo": 0,
+          "hi": 7,
+          "mid": 3
+        },
+        "values": [
+          2,
+          5,
+          8,
+          12,
+          16,
+          19,
+          23,
+          31
+        ]
+      },
+      {
+        "label": "Keep the upper half",
+        "detail": "19 matches the target; its index is 5.",
+        "active": [
+          "5"
+        ],
+        "state": {
+          "lo": 4,
+          "hi": 7,
+          "mid": 5,
+          "answer": 5
+        },
+        "values": [
+          2,
+          5,
+          8,
+          12,
+          16,
+          19,
+          23,
+          31
+        ]
+      }
+    ]
+  },
+  {
+    "id": "pointers",
+    "title": "Two pointers",
+    "category": "Arrays & search",
+    "problemId": "dsa-025",
+    "useWhen": "Find a pair or maintain boundaries in sorted data.",
+    "invariant": "Every discarded endpoint is impossible for the remaining search.",
+    "time": "O(n)",
+    "space": "O(1)",
+    "pitfall": "Moving endpoints by sum assumes the array is sorted.",
+    "values": [
+      1,
+      2,
+      4,
+      6,
+      8,
+      11
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Too large",
+        "detail": "1 + 11 = 12 > 10. Move right leftward.",
+        "active": [
+          "0",
+          "5"
+        ],
+        "state": {
+          "sum": 12
+        },
+        "values": [
+          1,
+          2,
+          4,
+          6,
+          8,
+          11
+        ]
+      },
+      {
+        "label": "Too small",
+        "detail": "1 + 8 = 9 < 10. Move left rightward.",
+        "active": [
+          "0",
+          "4"
+        ],
+        "state": {
+          "sum": 9
+        },
+        "values": [
+          1,
+          2,
+          4,
+          6,
+          8,
+          11
+        ]
+      },
+      {
+        "label": "Pair found",
+        "detail": "2 + 8 = 10.",
+        "active": [
+          "1",
+          "4"
+        ],
+        "state": {
+          "answer": [
+            1,
+            4
+          ]
+        },
+        "values": [
+          1,
+          2,
+          4,
+          6,
+          8,
+          11
+        ]
+      }
+    ]
+  },
+  {
+    "id": "window",
+    "title": "Sliding window",
+    "category": "Arrays & search",
+    "problemId": "dsa-190",
+    "useWhen": "Reuse aggregate work across contiguous fixed-width ranges.",
+    "invariant": "The running sum contains exactly the current three elements.",
+    "time": "O(n)",
+    "space": "O(1)",
+    "pitfall": "Variable windows with sum thresholds need additional assumptions if negatives occur.",
+    "values": [
+      2,
+      1,
+      5,
+      1,
+      3,
+      2
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Initial window",
+        "detail": "Sum the first three values.",
+        "active": [
+          "0",
+          "1",
+          "2"
+        ],
+        "state": {
+          "sum": 8,
+          "best": 8
+        },
+        "values": [
+          2,
+          1,
+          5,
+          1,
+          3,
+          2
+        ]
+      },
+      {
+        "label": "Slide once",
+        "detail": "Remove 2; add 1.",
+        "active": [
+          "1",
+          "2",
+          "3"
+        ],
+        "state": {
+          "sum": 7,
+          "best": 8
+        },
+        "values": [
+          2,
+          1,
+          5,
+          1,
+          3,
+          2
+        ]
+      },
+      {
+        "label": "Improve best",
+        "detail": "Remove 1; add 3.",
+        "active": [
+          "2",
+          "3",
+          "4"
+        ],
+        "state": {
+          "sum": 9,
+          "best": 9
+        },
+        "values": [
+          2,
+          1,
+          5,
+          1,
+          3,
+          2
+        ]
+      },
+      {
+        "label": "Last window",
+        "detail": "Remove 5; add 2. The answer remains 9.",
+        "active": [
+          "3",
+          "4",
+          "5"
+        ],
+        "state": {
+          "sum": 6,
+          "best": 9
+        },
+        "values": [
+          2,
+          1,
+          5,
+          1,
+          3,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "id": "prefix",
+    "title": "Prefix sums",
+    "category": "Arrays & search",
+    "problemId": "dsa-024",
+    "useWhen": "Answer many range-sum queries after preprocessing.",
+    "invariant": "prefix[i] is the sum of values before index i.",
+    "time": "O(n + q)",
+    "space": "O(n)",
+    "pitfall": "For inclusive [l,r], subtract prefix[l] from prefix[r+1].",
+    "values": [
+      3,
+      1,
+      4,
+      2
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Identity",
+        "detail": "Start with the empty-prefix sum 0.",
+        "active": [],
+        "state": {
+          "prefix": [
+            0
+          ]
+        },
+        "values": [
+          3,
+          1,
+          4,
+          2
+        ]
+      },
+      {
+        "label": "Accumulate",
+        "detail": "Append the sum after each element.",
+        "active": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "state": {
+          "prefix": [
+            0,
+            3,
+            4,
+            8,
+            10
+          ]
+        },
+        "values": [
+          3,
+          1,
+          4,
+          2
+        ]
+      },
+      {
+        "label": "Query [1,3]",
+        "detail": "prefix[4] − prefix[1] = 10 − 3 = 7.",
+        "active": [
+          "1",
+          "2",
+          "3"
+        ],
+        "state": {
+          "answer": 7
+        },
+        "values": [
+          3,
+          1,
+          4,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hash",
+    "title": "Hashing & complement lookup",
+    "category": "Arrays & search",
+    "problemId": "dsa-013",
+    "useWhen": "Replace repeated pair searches with a lookup of earlier values.",
+    "invariant": "The table stores only indices processed before the current value.",
+    "time": "Expected O(n)",
+    "space": "O(n)",
+    "pitfall": "Check the complement before insertion so one element is not used twice.",
+    "values": [
+      2,
+      7,
+      11,
+      15
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Read 2",
+        "detail": "Need 7; it is not yet in the table.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "seen": {
+            "2": 0
+          }
+        },
+        "values": [
+          2,
+          7,
+          11,
+          15
+        ]
+      },
+      {
+        "label": "Read 7",
+        "detail": "Need 2; index 0 is already stored.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "seen": {
+            "2": 0
+          },
+          "answer": [
+            0,
+            1
+          ]
+        },
+        "values": [
+          2,
+          7,
+          11,
+          15
+        ]
+      }
+    ]
+  },
+  {
+    "id": "kadane",
+    "title": "Kadane’s algorithm",
+    "category": "Arrays & search",
+    "problemId": "dsa-009",
+    "useWhen": "Find a maximum-sum nonempty contiguous subarray.",
+    "invariant": "Ending here is the best sum whose right endpoint is the current index.",
+    "time": "O(n)",
+    "space": "O(1)",
+    "pitfall": "Initialize from the first element to handle all-negative input.",
+    "values": [
+      -2,
+      3,
+      -1,
+      4,
+      -5
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Start",
+        "detail": "The only nonempty interval ends at −2.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "ending": -2,
+          "best": -2
+        },
+        "values": [
+          -2,
+          3,
+          -1,
+          4,
+          -5
+        ]
+      },
+      {
+        "label": "Restart",
+        "detail": "3 is better than extending −2.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "ending": 3,
+          "best": 3
+        },
+        "values": [
+          -2,
+          3,
+          -1,
+          4,
+          -5
+        ]
+      },
+      {
+        "label": "Extend",
+        "detail": "3 + (−1) = 2.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "ending": 2,
+          "best": 3
+        },
+        "values": [
+          -2,
+          3,
+          -1,
+          4,
+          -5
+        ]
+      },
+      {
+        "label": "Improve",
+        "detail": "2 + 4 = 6.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "ending": 6,
+          "best": 6
+        },
+        "values": [
+          -2,
+          3,
+          -1,
+          4,
+          -5
+        ]
+      },
+      {
+        "label": "Finish",
+        "detail": "The best earlier interval remains 6.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "ending": 1,
+          "best": 6
+        },
+        "values": [
+          -2,
+          3,
+          -1,
+          4,
+          -5
+        ]
+      }
+    ]
+  },
+  {
+    "id": "merge",
+    "title": "Merge sort",
+    "category": "Sorting & order",
+    "problemId": "dsa-183",
+    "useWhen": "Sort with predictable O(n log n) time.",
+    "invariant": "Each merged output prefix is sorted and contains the smallest consumed values.",
+    "time": "O(n log n)",
+    "space": "O(n)",
+    "pitfall": "Merging needs both halves to be sorted first.",
+    "values": [
+      4,
+      1,
+      3,
+      2
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Split",
+        "detail": "Divide into [4,1] and [3,2].",
+        "active": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "state": {
+          "halves": [
+            [
+              4,
+              1
+            ],
+            [
+              3,
+              2
+            ]
+          ]
+        },
+        "values": [
+          4,
+          1,
+          3,
+          2
+        ]
+      },
+      {
+        "label": "Sort halves",
+        "detail": "Each pair becomes ordered.",
+        "active": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "state": {
+          "halves": [
+            [
+              1,
+              4
+            ],
+            [
+              2,
+              3
+            ]
+          ]
+        },
+        "values": [
+          1,
+          4,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "Merge",
+        "detail": "Choose the smaller head repeatedly.",
+        "active": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "state": {
+          "answer": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "values": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    ]
+  },
+  {
+    "id": "partition",
+    "title": "Three-way partition",
+    "category": "Sorting & order",
+    "problemId": "dsa-185",
+    "useWhen": "Partition values into three categories in one scan.",
+    "invariant": "[0,low) are zero; [low,mid) are one; (high,n) are two.",
+    "time": "O(n)",
+    "space": "O(1)",
+    "pitfall": "After swapping with high, inspect the incoming value before advancing mid.",
+    "values": [
+      2,
+      0,
+      1,
+      2,
+      0
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Move a 2 right",
+        "detail": "Swap mid=0 with high=4; decrease high.",
+        "active": [
+          "0",
+          "4"
+        ],
+        "state": {
+          "low": 0,
+          "mid": 0,
+          "high": 3
+        },
+        "values": [
+          0,
+          0,
+          1,
+          2,
+          2
+        ]
+      },
+      {
+        "label": "Move zeros left",
+        "detail": "Both zeros join the finished low region.",
+        "active": [
+          "0",
+          "1"
+        ],
+        "state": {
+          "low": 2,
+          "mid": 2,
+          "high": 3
+        },
+        "values": [
+          0,
+          0,
+          1,
+          2,
+          2
+        ]
+      },
+      {
+        "label": "Skip a 1",
+        "detail": "The middle region grows.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "low": 2,
+          "mid": 3,
+          "high": 3
+        },
+        "values": [
+          0,
+          0,
+          1,
+          2,
+          2
+        ]
+      },
+      {
+        "label": "Finish",
+        "detail": "The final 2 is already at high; decrease high.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "answer": [
+            0,
+            0,
+            1,
+            2,
+            2
+          ]
+        },
+        "values": [
+          0,
+          0,
+          1,
+          2,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "id": "reverse-list",
+    "title": "Reverse a linked list",
+    "category": "Lists & stacks",
+    "problemId": "dsa-049",
+    "useWhen": "Reverse links while keeping all nodes reachable.",
+    "invariant": "prev owns the reversed prefix; current starts the remaining suffix.",
+    "time": "O(n)",
+    "space": "O(1)",
+    "pitfall": "Save next before changing current.next.",
+    "values": [
+      1,
+      2,
+      3
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Before mutation",
+        "detail": "prev=null; current=1.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "prev": null,
+          "current": 1
+        },
+        "values": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "Reverse one link",
+        "detail": "Save 2, set 1.next=null.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "prev": 1,
+          "current": 2,
+          "links": [
+            "1→null",
+            "2→3"
+          ]
+        },
+        "values": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "Extend prefix",
+        "detail": "Save 3, set 2.next=1.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "prev": 2,
+          "current": 3,
+          "links": [
+            "2→1→null"
+          ]
+        },
+        "values": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "New head",
+        "detail": "Set 3.next=2; current becomes null.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "answer": [
+            3,
+            2,
+            1
+          ]
+        },
+        "values": [
+          1,
+          2,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fast-slow",
+    "title": "Fast & slow pointers",
+    "category": "Lists & stacks",
+    "problemId": "dsa-053",
+    "useWhen": "Detect a cycle without storing every visited node.",
+    "invariant": "Inside a cycle, fast gains one position on slow per iteration.",
+    "time": "O(n)",
+    "space": "O(1)",
+    "pitfall": "Check fast and fast.next before moving two steps.",
+    "values": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "kind": "graph",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        3,
+        1
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Start",
+        "detail": "Cycle edges are 0→1→2→3→1.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "slow": 0,
+          "fast": 0
+        },
+        "values": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "First move",
+        "detail": "Slow advances one edge; fast advances two.",
+        "active": [
+          "1",
+          "2"
+        ],
+        "state": {
+          "slow": 1,
+          "fast": 2
+        },
+        "values": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "Second move",
+        "detail": "Fast wraps through node 1.",
+        "active": [
+          "2",
+          "1"
+        ],
+        "state": {
+          "slow": 2,
+          "fast": 1
+        },
+        "values": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "Meet",
+        "detail": "Both pointers reach 3. A cycle exists.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "slow": 3,
+          "fast": 3,
+          "cycle": true
+        },
+        "values": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "monostack",
+    "title": "Monotonic stack",
+    "category": "Lists & stacks",
+    "problemId": "dsa-064",
+    "useWhen": "Find the next greater value for many positions.",
+    "invariant": "The stack contains unresolved indices in non-increasing value order.",
+    "time": "O(n)",
+    "space": "O(n)",
+    "pitfall": "Store indices when outputs depend on positions or distances.",
+    "values": [
+      2,
+      1,
+      3
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Push 2",
+        "detail": "No later greater value is known.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "stack": [
+            0
+          ],
+          "answer": [
+            -1,
+            -1,
+            -1
+          ]
+        },
+        "values": [
+          2,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Push 1",
+        "detail": "1 does not resolve 2.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "stack": [
+            0,
+            1
+          ],
+          "answer": [
+            -1,
+            -1,
+            -1
+          ]
+        },
+        "values": [
+          2,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Resolve both",
+        "detail": "3 is greater than 1 and 2; pop each once.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "stack": [
+            2
+          ],
+          "answer": [
+            3,
+            3,
+            -1
+          ]
+        },
+        "values": [
+          2,
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "deque",
+    "title": "Monotonic deque",
+    "category": "Lists & stacks",
+    "problemId": "dsa-067",
+    "useWhen": "Track each sliding window’s maximum.",
+    "invariant": "Indices remain in the window and values decrease from front to back.",
+    "time": "O(n)",
+    "space": "O(k)",
+    "pitfall": "Expire indices by position; equal values still need a consistent tie rule.",
+    "values": [
+      1,
+      3,
+      -1,
+      -3,
+      5
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "First two values",
+        "detail": "3 removes 1 from the back.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "deque": [
+            1
+          ]
+        },
+        "values": [
+          1,
+          3,
+          -1,
+          -3,
+          5
+        ]
+      },
+      {
+        "label": "First full window",
+        "detail": "Append index 2; the front gives maximum 3.",
+        "active": [
+          "1",
+          "2"
+        ],
+        "state": {
+          "deque": [
+            1,
+            2
+          ],
+          "output": [
+            3
+          ]
+        },
+        "values": [
+          1,
+          3,
+          -1,
+          -3,
+          5
+        ]
+      },
+      {
+        "label": "Slide",
+        "detail": "Append index 3; maximum stays 3.",
+        "active": [
+          "1",
+          "2",
+          "3"
+        ],
+        "state": {
+          "deque": [
+            1,
+            2,
+            3
+          ],
+          "output": [
+            3,
+            3
+          ]
+        },
+        "values": [
+          1,
+          3,
+          -1,
+          -3,
+          5
+        ]
+      },
+      {
+        "label": "New maximum",
+        "detail": "Expire index 1, then 5 removes smaller values from the back.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "deque": [
+            4
+          ],
+          "output": [
+            3,
+            3,
+            5
+          ]
+        },
+        "values": [
+          1,
+          3,
+          -1,
+          -3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "id": "inorder",
+    "title": "Tree inorder",
+    "category": "Trees & tries",
+    "problemId": "dsa-073",
+    "useWhen": "Traverse a binary tree with a defined processing order.",
+    "invariant": "Left → node → right; a valid BST produces sorted values.",
+    "time": "O(n)",
+    "space": "O(h) recursion stack",
+    "pitfall": "A skewed tree can have height n; an explicit stack avoids recursive stack exhaustion.",
+    "values": [
+      4,
+      2,
+      6,
+      1,
+      3
+    ],
+    "kind": "tree",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Visit 1",
+        "detail": "Left → node → right; a valid BST produces sorted values.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "output": [
+            1
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 2",
+        "detail": "Left → node → right; a valid BST produces sorted values.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "output": [
+            1,
+            2
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 3",
+        "detail": "Left → node → right; a valid BST produces sorted values.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "output": [
+            1,
+            2,
+            3
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 4",
+        "detail": "Left → node → right; a valid BST produces sorted values.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "output": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 6",
+        "detail": "Left → node → right; a valid BST produces sorted values.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "output": [
+            1,
+            2,
+            3,
+            4,
+            6
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "preorder",
+    "title": "Tree preorder",
+    "category": "Trees & tries",
+    "problemId": "dsa-074",
+    "useWhen": "Traverse a binary tree with a defined processing order.",
+    "invariant": "Node → left → right; visit each parent before its descendants.",
+    "time": "O(n)",
+    "space": "O(h) recursion stack",
+    "pitfall": "A skewed tree can have height n; an explicit stack avoids recursive stack exhaustion.",
+    "values": [
+      4,
+      2,
+      6,
+      1,
+      3
+    ],
+    "kind": "tree",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Visit 4",
+        "detail": "Node → left → right; visit each parent before its descendants.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "output": [
+            4
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 2",
+        "detail": "Node → left → right; visit each parent before its descendants.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "output": [
+            4,
+            2
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 1",
+        "detail": "Node → left → right; visit each parent before its descendants.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "output": [
+            4,
+            2,
+            1
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 3",
+        "detail": "Node → left → right; visit each parent before its descendants.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "output": [
+            4,
+            2,
+            1,
+            3
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 6",
+        "detail": "Node → left → right; visit each parent before its descendants.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "output": [
+            4,
+            2,
+            1,
+            3,
+            6
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "postorder",
+    "title": "Tree postorder",
+    "category": "Trees & tries",
+    "problemId": "dsa-075",
+    "useWhen": "Traverse a binary tree with a defined processing order.",
+    "invariant": "Left → right → node; combine children before processing the parent.",
+    "time": "O(n)",
+    "space": "O(h) recursion stack",
+    "pitfall": "A skewed tree can have height n; an explicit stack avoids recursive stack exhaustion.",
+    "values": [
+      4,
+      2,
+      6,
+      1,
+      3
+    ],
+    "kind": "tree",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Visit 1",
+        "detail": "Left → right → node; combine children before processing the parent.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "output": [
+            1
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 3",
+        "detail": "Left → right → node; combine children before processing the parent.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "output": [
+            1,
+            3
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 2",
+        "detail": "Left → right → node; combine children before processing the parent.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "output": [
+            1,
+            3,
+            2
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 6",
+        "detail": "Left → right → node; combine children before processing the parent.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "output": [
+            1,
+            3,
+            2,
+            6
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Visit 4",
+        "detail": "Left → right → node; combine children before processing the parent.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "output": [
+            1,
+            3,
+            2,
+            6,
+            4
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tree-level",
+    "title": "Tree level-order BFS",
+    "category": "Trees & tries",
+    "problemId": "dsa-076",
+    "useWhen": "Group binary-tree values by depth.",
+    "invariant": "The queue begins each round with exactly one level.",
+    "time": "O(n)",
+    "space": "O(w), maximum width",
+    "pitfall": "Capture the queue size before appending the next level.",
+    "values": [
+      4,
+      2,
+      6,
+      1,
+      3
+    ],
+    "kind": "tree",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Root level",
+        "detail": "Read one queued node: 4.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "queue": [
+            2,
+            6
+          ],
+          "levels": [
+            [
+              4
+            ]
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Second level",
+        "detail": "Read the two nodes that were present at the round start.",
+        "active": [
+          "1",
+          "2"
+        ],
+        "state": {
+          "queue": [
+            1,
+            3
+          ],
+          "levels": [
+            [
+              4
+            ],
+            [
+              2,
+              6
+            ]
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Leaf level",
+        "detail": "Read 1 and 3. The queue becomes empty.",
+        "active": [
+          "3",
+          "4"
+        ],
+        "state": {
+          "queue": [],
+          "levels": [
+            [
+              4
+            ],
+            [
+              2,
+              6
+            ],
+            [
+              1,
+              3
+            ]
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "bst",
+    "title": "BST search",
+    "category": "Trees & tries",
+    "problemId": "dsa-087",
+    "useWhen": "Locate a value using a binary-search-tree ordering invariant.",
+    "invariant": "All values left of a node are smaller; all right values are larger under this contract.",
+    "time": "O(h)",
+    "space": "O(1) iterative",
+    "pitfall": "An unbalanced BST can degrade to O(n) search.",
+    "values": [
+      4,
+      2,
+      6,
+      1,
+      3
+    ],
+    "kind": "tree",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Compare at 4",
+        "detail": "Target 3 is smaller; descend left.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "target": 3
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Compare at 2",
+        "detail": "Target 3 is larger; descend right.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "target": 3
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Match",
+        "detail": "Found node value 3.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "found": true
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "trie",
+    "title": "Trie insert & prefix search",
+    "category": "Trees & tries",
+    "problemId": "dsa-176",
+    "useWhen": "Share common prefixes across a dictionary.",
+    "invariant": "A root-to-node path spells one prefix; an end marker distinguishes a word.",
+    "time": "O(L) per operation",
+    "space": "O(total inserted characters)",
+    "pitfall": "A prefix match is not necessarily a complete-word match.",
+    "values": [
+      "root",
+      "c",
+      "a",
+      "t ✓",
+      "r ✓"
+    ],
+    "kind": "trie",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Insert cat",
+        "detail": "Create c→a→t and mark t as a word end.",
+        "active": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "state": {
+          "words": [
+            "cat"
+          ]
+        },
+        "values": [
+          "root",
+          "c",
+          "a",
+          "t ✓",
+          "r ✓"
+        ]
+      },
+      {
+        "label": "Insert car",
+        "detail": "Reuse c→a, then add r with an end marker.",
+        "active": [
+          "2",
+          "4"
+        ],
+        "state": {
+          "words": [
+            "cat",
+            "car"
+          ]
+        },
+        "values": [
+          "root",
+          "c",
+          "a",
+          "t ✓",
+          "r ✓"
+        ]
+      },
+      {
+        "label": "Find prefix ca",
+        "detail": "c and a exist; the prefix matches.",
+        "active": [
+          "1",
+          "2"
+        ],
+        "state": {
+          "startsWith ca": true,
+          "search ca": false
+        },
+        "values": [
+          "root",
+          "c",
+          "a",
+          "t ✓",
+          "r ✓"
+        ]
+      },
+      {
+        "label": "Find word car",
+        "detail": "The path exists and r is marked.",
+        "active": [
+          "1",
+          "2",
+          "4"
+        ],
+        "state": {
+          "search car": true
+        },
+        "values": [
+          "root",
+          "c",
+          "a",
+          "t ✓",
+          "r ✓"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "heap",
+    "title": "Heap / top-k",
+    "category": "Sorting & order",
+    "problemId": "dsa-090",
+    "useWhen": "Keep the k largest values seen in a stream.",
+    "invariant": "A min-heap of size k holds the k largest processed values.",
+    "time": "O(n log k)",
+    "space": "O(k)",
+    "pitfall": "The root is the kth largest only once k values have been retained.",
+    "values": [
+      4,
+      1,
+      7,
+      3,
+      9
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Fill k=2",
+        "detail": "Retain 4 and 1.",
+        "active": [
+          "0",
+          "1"
+        ],
+        "state": {
+          "minHeap": [
+            1,
+            4
+          ]
+        },
+        "values": [
+          4,
+          1,
+          7,
+          3,
+          9
+        ]
+      },
+      {
+        "label": "Read 7",
+        "detail": "Evict the smallest retained value, 1.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "minHeap": [
+            4,
+            7
+          ]
+        },
+        "values": [
+          4,
+          1,
+          7,
+          3,
+          9
+        ]
+      },
+      {
+        "label": "Read 3",
+        "detail": "3 cannot improve the current top two.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "minHeap": [
+            4,
+            7
+          ]
+        },
+        "values": [
+          4,
+          1,
+          7,
+          3,
+          9
+        ]
+      },
+      {
+        "label": "Read 9",
+        "detail": "Evict 4. The second-largest value is 7.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "minHeap": [
+            7,
+            9
+          ],
+          "answer": 7
+        },
+        "values": [
+          4,
+          1,
+          7,
+          3,
+          9
+        ]
+      }
+    ]
+  },
+  {
+    "id": "bfs",
+    "title": "Graph BFS",
+    "category": "Graphs & paths",
+    "problemId": "dsa-097",
+    "useWhen": "Explore unweighted graphs in distance layers.",
+    "invariant": "A vertex is marked on enqueue, so it enters the queue at most once.",
+    "time": "O(V + E)",
+    "space": "O(V)",
+    "pitfall": "BFS minimizes edge count only when each edge has equal cost.",
+    "values": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E"
+    ],
+    "kind": "graph",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Discover A",
+        "detail": "Enqueue source and mark it visited.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "queue": [
+            "A"
+          ],
+          "visited": [
+            "A"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      },
+      {
+        "label": "Expand A",
+        "detail": "Discover B and C at distance 1.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "queue": [
+            "B",
+            "C"
+          ],
+          "distance": {
+            "A": 0,
+            "B": 1,
+            "C": 1
+          }
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      },
+      {
+        "label": "Expand B",
+        "detail": "Discover D at distance 2.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "queue": [
+            "C",
+            "D"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      },
+      {
+        "label": "Expand C",
+        "detail": "Discover E at distance 2.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "queue": [
+            "D",
+            "E"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      },
+      {
+        "label": "Finish frontier",
+        "detail": "Visit D then E.",
+        "active": [
+          "3",
+          "4"
+        ],
+        "state": {
+          "order": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dfs",
+    "title": "Graph DFS",
+    "category": "Graphs & paths",
+    "problemId": "dsa-098",
+    "useWhen": "Explore a branch deeply before returning to other neighbors.",
+    "invariant": "The active call stack is a path; each vertex is entered only once.",
+    "time": "O(V + E)",
+    "space": "O(V)",
+    "pitfall": "Directed cycle detection also needs active-stack state, not just visited.",
+    "values": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E"
+    ],
+    "kind": "graph",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Enter A",
+        "detail": "Neighbors will be considered in insertion order B then C.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "stack": [
+            "A"
+          ],
+          "order": [
+            "A"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      },
+      {
+        "label": "Descend B",
+        "detail": "Follow B before exploring C.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "stack": [
+            "A",
+            "B"
+          ],
+          "order": [
+            "A",
+            "B"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      },
+      {
+        "label": "Visit D",
+        "detail": "D has no unvisited neighbor; return to B then A.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "stack": [
+            "A",
+            "B",
+            "D"
+          ],
+          "order": [
+            "A",
+            "B",
+            "D"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      },
+      {
+        "label": "Descend C",
+        "detail": "Resume at A and visit C.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "stack": [
+            "A",
+            "C"
+          ],
+          "order": [
+            "A",
+            "B",
+            "D",
+            "C"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      },
+      {
+        "label": "Visit E",
+        "detail": "Finish C’s branch.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "order": [
+            "A",
+            "B",
+            "D",
+            "C",
+            "E"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "grid",
+    "title": "Grid flood fill",
+    "category": "Graphs & paths",
+    "problemId": "dsa-101",
+    "useWhen": "Model a rectangular board as an implicit graph.",
+    "invariant": "Each discovered cell receives the new color before it can be revisited.",
+    "time": "O(rows × columns)",
+    "space": "O(rows × columns)",
+    "pitfall": "Explicitly choose four-way versus eight-way adjacency.",
+    "values": [
+      1,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1
+    ],
+    "kind": "matrix",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Start at (0,0)",
+        "detail": "Change the seed from 1 to 2.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "queue": [
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "values": [
+          2,
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1
+        ]
+      },
+      {
+        "label": "Discover neighbors",
+        "detail": "Only (0,1) and (1,0) are connected matching neighbors.",
+        "active": [
+          "1",
+          "3"
+        ],
+        "state": {
+          "queue": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "values": [
+          2,
+          2,
+          0,
+          2,
+          0,
+          0,
+          0,
+          1,
+          1
+        ]
+      },
+      {
+        "label": "Component finished",
+        "detail": "The diagonal lower-right component remains unchanged.",
+        "active": [
+          "0",
+          "1",
+          "3"
+        ],
+        "state": {
+          "recolored": 3
+        },
+        "values": [
+          2,
+          2,
+          0,
+          2,
+          0,
+          0,
+          0,
+          1,
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "id": "topological",
+    "title": "Topological sort / Kahn",
+    "category": "Graphs & paths",
+    "problemId": "dsa-106",
+    "useWhen": "Order prerequisites in a directed acyclic graph.",
+    "invariant": "Only vertices with no remaining incoming edges are ready.",
+    "time": "O(V + E)",
+    "space": "O(V)",
+    "pitfall": "If fewer than V vertices are emitted, a directed cycle remains.",
+    "values": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "kind": "graph",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        2,
+        3
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Initialize",
+        "detail": "Only A has indegree zero.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "indegree": [
+            0,
+            1,
+            1,
+            2
+          ],
+          "ready": [
+            "A"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      {
+        "label": "Remove A",
+        "detail": "B and C become ready.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "indegree": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "order": [
+            "A"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      {
+        "label": "Remove B",
+        "detail": "D still waits for C.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "indegree": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "order": [
+            "A",
+            "B"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      {
+        "label": "Remove C",
+        "detail": "D reaches indegree zero.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "ready": [
+            "D"
+          ],
+          "order": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      {
+        "label": "Remove D",
+        "detail": "All four vertices are ordered.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "order": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dijkstra",
+    "title": "Dijkstra shortest paths",
+    "category": "Graphs & paths",
+    "problemId": "dsa-110",
+    "useWhen": "Compute shortest distances with nonnegative edge weights.",
+    "invariant": "The smallest unsettled distance is final when removed from the priority queue.",
+    "time": "O((V + E) log V)",
+    "space": "O(V + E)",
+    "pitfall": "Negative edges break the settling argument; skip stale heap entries.",
+    "values": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "kind": "graph",
+    "edges": [
+      [
+        0,
+        1,
+        4
+      ],
+      [
+        0,
+        2,
+        1
+      ],
+      [
+        2,
+        1,
+        2
+      ],
+      [
+        2,
+        3,
+        5
+      ],
+      [
+        1,
+        3,
+        1
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Initialize",
+        "detail": "Source A has distance 0.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "distance": [
+            0,
+            "∞",
+            "∞",
+            "∞"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      {
+        "label": "Settle A",
+        "detail": "Relax A→B (4) and A→C (1).",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "distance": [
+            0,
+            4,
+            1,
+            "∞"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      {
+        "label": "Settle C",
+        "detail": "C→B (2) improves B to 3; C→D (5) gives 6.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "distance": [
+            0,
+            3,
+            1,
+            6
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      {
+        "label": "Settle B",
+        "detail": "B→D (1) improves D to 4.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "distance": [
+            0,
+            3,
+            1,
+            4
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      {
+        "label": "Settle D",
+        "detail": "Skip any later stale heap entries.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "answer": [
+            0,
+            3,
+            1,
+            4
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "bellman",
+    "title": "Bellman–Ford",
+    "category": "Graphs & paths",
+    "problemId": "dsa-111",
+    "useWhen": "Handle negative edges and detect reachable negative cycles.",
+    "invariant": "After k complete passes, shortest walks using at most k edges are represented.",
+    "time": "O(VE)",
+    "space": "O(V)",
+    "pitfall": "Only a negative cycle reachable from the source affects single-source distances.",
+    "values": [
+      "A",
+      "B",
+      "C"
+    ],
+    "kind": "graph",
+    "edges": [
+      [
+        0,
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        -2
+      ],
+      [
+        0,
+        2,
+        5
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Initialize",
+        "detail": "Start at A; others are unreachable.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "distance": [
+            0,
+            "∞",
+            "∞"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Relax first edge",
+        "detail": "A→B has weight 4.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "distance": [
+            0,
+            4,
+            "∞"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Relax negative edge",
+        "detail": "B→C has weight −2; C becomes 2.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "distance": [
+            0,
+            4,
+            2
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Check for change",
+        "detail": "A second pass changes nothing; no further relaxation is possible.",
+        "active": [
+          "0",
+          "1",
+          "2"
+        ],
+        "state": {
+          "answer": [
+            0,
+            4,
+            2
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "floyd",
+    "title": "Floyd–Warshall",
+    "category": "Graphs & paths",
+    "problemId": "dsa-112",
+    "useWhen": "Compute all-pairs shortest paths on modest dense graphs.",
+    "invariant": "At phase k, only processed vertices may be internal path vertices.",
+    "time": "O(V³)",
+    "space": "O(V²)",
+    "pitfall": "Guard infinity before adding distances; negative diagonal entries signal a negative cycle.",
+    "values": [
+      "A",
+      "B",
+      "C"
+    ],
+    "kind": "graph",
+    "edges": [
+      [
+        0,
+        1,
+        3
+      ],
+      [
+        1,
+        2,
+        2
+      ],
+      [
+        0,
+        2,
+        9
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Direct distances",
+        "detail": "A→C costs 9 directly.",
+        "active": [
+          "0",
+          "1",
+          "2"
+        ],
+        "state": {
+          "distance": [
+            [
+              0,
+              3,
+              9
+            ],
+            [
+              "∞",
+              0,
+              2
+            ],
+            [
+              "∞",
+              "∞",
+              0
+            ]
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Allow B internally",
+        "detail": "A→B→C costs 3+2=5, improving A→C.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "distance": [
+            [
+              0,
+              3,
+              5
+            ],
+            [
+              "∞",
+              0,
+              2
+            ],
+            [
+              "∞",
+              "∞",
+              0
+            ]
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Finish phases",
+        "detail": "No further improvement through C.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "answer": [
+            [
+              0,
+              3,
+              5
+            ],
+            [
+              "∞",
+              0,
+              2
+            ],
+            [
+              "∞",
+              "∞",
+              0
+            ]
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dsu",
+    "title": "Disjoint set union",
+    "category": "Graphs & paths",
+    "problemId": "dsa-116",
+    "useWhen": "Maintain connectivity as components merge.",
+    "invariant": "Every vertex reaches its component representative through parent links.",
+    "time": "Amortized O(α(n)) per operation",
+    "space": "O(n)",
+    "pitfall": "DSU alone cannot remove edges or answer arbitrary dynamic deletions.",
+    "values": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Singletons",
+        "detail": "Each vertex is its own component.",
+        "active": [],
+        "state": {
+          "parent": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "components": 4
+        },
+        "values": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "Union 0 and 1",
+        "detail": "Attach one representative to the other.",
+        "active": [
+          "0",
+          "1"
+        ],
+        "state": {
+          "parent": [
+            0,
+            0,
+            2,
+            3
+          ],
+          "components": 3
+        },
+        "values": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "Union 2 and 3",
+        "detail": "Form a second two-vertex component.",
+        "active": [
+          "2",
+          "3"
+        ],
+        "state": {
+          "parent": [
+            0,
+            0,
+            2,
+            2
+          ],
+          "components": 2
+        },
+        "values": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "Union 1 and 3",
+        "detail": "Find roots 0 and 2, then merge them.",
+        "active": [
+          "0",
+          "2"
+        ],
+        "state": {
+          "parent": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "components": 1
+        },
+        "values": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "label": "Compress find(3)",
+        "detail": "Shorten 3’s path directly to root 0.",
+        "active": [
+          "3",
+          "0"
+        ],
+        "state": {
+          "parent": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "values": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "kruskal",
+    "title": "Kruskal minimum spanning tree",
+    "category": "Graphs & paths",
+    "problemId": "dsa-117",
+    "useWhen": "Connect all vertices with minimum total edge weight.",
+    "invariant": "Chosen edges form a forest; each accepted edge joins two different components.",
+    "time": "O(E log E)",
+    "space": "O(V + E)",
+    "pitfall": "A disconnected graph yields a minimum spanning forest, not one spanning tree.",
+    "values": [
+      "A",
+      "B",
+      "C"
+    ],
+    "kind": "graph",
+    "edges": [
+      [
+        0,
+        1,
+        1
+      ],
+      [
+        1,
+        2,
+        2
+      ],
+      [
+        0,
+        2,
+        4
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Sort edges",
+        "detail": "Weights are 1, 2, then 4.",
+        "active": [],
+        "state": {
+          "edges": [
+            "A—B:1",
+            "B—C:2",
+            "A—C:4"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Accept A—B",
+        "detail": "Different DSU components; add weight 1.",
+        "active": [
+          "0",
+          "1"
+        ],
+        "state": {
+          "cost": 1,
+          "chosen": [
+            "A—B"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Accept B—C",
+        "detail": "Connect the final component; total cost 3.",
+        "active": [
+          "1",
+          "2"
+        ],
+        "state": {
+          "cost": 3,
+          "chosen": [
+            "A—B",
+            "B—C"
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Reject A—C",
+        "detail": "Both endpoints already share a component.",
+        "active": [
+          "0",
+          "2"
+        ],
+        "state": {
+          "answer": 3
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "backtracking",
+    "title": "Backtracking subsets",
+    "category": "Recursion & DP",
+    "problemId": "dsa-145",
+    "useWhen": "Enumerate choices while restoring shared mutable state.",
+    "invariant": "The current path contains exactly the choices on the active recursion branch.",
+    "time": "O(n × 2ⁿ) including output",
+    "space": "O(n) auxiliary + output",
+    "pitfall": "Undo each mutation before returning to a sibling branch.",
+    "values": [
+      1,
+      2
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Empty subset",
+        "detail": "Every branch begins from a valid partial choice.",
+        "active": [],
+        "state": {
+          "path": [],
+          "output": [
+            []
+          ]
+        },
+        "values": [
+          1,
+          2
+        ]
+      },
+      {
+        "label": "Choose 1",
+        "detail": "Emit [1], then explore extending it.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "path": [
+            1
+          ],
+          "output": [
+            [],
+            [
+              1
+            ]
+          ]
+        },
+        "values": [
+          1,
+          2
+        ]
+      },
+      {
+        "label": "Choose 2 after 1",
+        "detail": "Emit [1,2], then pop 2 and pop 1.",
+        "active": [
+          "0",
+          "1"
+        ],
+        "state": {
+          "path": [
+            1,
+            2
+          ],
+          "output": [
+            [],
+            [
+              1
+            ],
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        "values": [
+          1,
+          2
+        ]
+      },
+      {
+        "label": "Sibling branch",
+        "detail": "Choose 2 directly from the root.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "path": [
+            2
+          ],
+          "output": [
+            [],
+            [
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2
+            ]
+          ]
+        },
+        "values": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dp",
+    "title": "DP: states & recurrence",
+    "category": "Recursion & DP",
+    "problemId": "dsa-121",
+    "useWhen": "Count paths when the last move determines a smaller subproblem.",
+    "invariant": "dp[i] counts all ways to reach i with steps of size one or two.",
+    "time": "O(n)",
+    "space": "O(1) with rolling values",
+    "pitfall": "The empty path contributes dp[0]=1.",
+    "values": [
+      1,
+      1,
+      2,
+      3,
+      5,
+      8
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Base cases",
+        "detail": "There is one way to reach stair 0 and stair 1.",
+        "active": [
+          "0",
+          "1"
+        ],
+        "state": {
+          "previous": 1,
+          "current": 1
+        },
+        "values": [
+          1,
+          1,
+          2,
+          3,
+          5,
+          8
+        ]
+      },
+      {
+        "label": "Stair 2",
+        "detail": "1 + 1 = 2.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "ways": 2
+        },
+        "values": [
+          1,
+          1,
+          2,
+          3,
+          5,
+          8
+        ]
+      },
+      {
+        "label": "Stair 3",
+        "detail": "2 + 1 = 3.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "ways": 3
+        },
+        "values": [
+          1,
+          1,
+          2,
+          3,
+          5,
+          8
+        ]
+      },
+      {
+        "label": "Stair 4",
+        "detail": "3 + 2 = 5.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "ways": 5
+        },
+        "values": [
+          1,
+          1,
+          2,
+          3,
+          5,
+          8
+        ]
+      },
+      {
+        "label": "Stair 5",
+        "detail": "5 + 3 = 8.",
+        "active": [
+          "5"
+        ],
+        "state": {
+          "answer": 8
+        },
+        "values": [
+          1,
+          1,
+          2,
+          3,
+          5,
+          8
+        ]
+      }
+    ]
+  },
+  {
+    "id": "knapsack",
+    "title": "0/1 knapsack",
+    "category": "Recursion & DP",
+    "problemId": "dsa-226",
+    "useWhen": "Choose each item at most once under a capacity bound.",
+    "invariant": "After processing an item, dp[c] uses only processed items.",
+    "time": "O(nC)",
+    "space": "O(C)",
+    "pitfall": "Iterate capacity downward so the current item cannot be used repeatedly.",
+    "values": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Capacity 4",
+        "detail": "Items are (weight 2,value 3) and (weight 3,value 4).",
+        "active": [],
+        "state": {
+          "dp": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "values": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "label": "First item",
+        "detail": "Update capacities 4,3,2 from right to left.",
+        "active": [
+          "4",
+          "3",
+          "2"
+        ],
+        "state": {
+          "dp": [
+            0,
+            0,
+            3,
+            3,
+            3
+          ]
+        },
+        "values": [
+          0,
+          0,
+          3,
+          3,
+          3
+        ]
+      },
+      {
+        "label": "Second item",
+        "detail": "Update 4 then 3. The items cannot both fit.",
+        "active": [
+          "4",
+          "3"
+        ],
+        "state": {
+          "dp": [
+            0,
+            0,
+            3,
+            4,
+            4
+          ],
+          "answer": 4
+        },
+        "values": [
+          0,
+          0,
+          3,
+          4,
+          4
+        ]
+      }
+    ]
+  },
+  {
+    "id": "lcs",
+    "title": "Longest common subsequence",
+    "category": "Recursion & DP",
+    "problemId": "dsa-134",
+    "useWhen": "Compare two sequences while allowing deletions.",
+    "invariant": "dp[i][j] is the LCS length of the first i and j symbols.",
+    "time": "O(mn)",
+    "space": "O(min(m,n)) for lengths",
+    "pitfall": "A subsequence need not be contiguous; substring uses a different recurrence.",
+    "values": [
+      "a",
+      "b",
+      "c"
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Compare with ac",
+        "detail": "Initialize the empty-prefix row to zeros.",
+        "active": [],
+        "state": {
+          "row": [
+            0,
+            0,
+            0
+          ]
+        },
+        "values": [
+          "a",
+          "b",
+          "c"
+        ]
+      },
+      {
+        "label": "Process a",
+        "detail": "Matching a extends the diagonal.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "row": [
+            0,
+            1,
+            1
+          ]
+        },
+        "values": [
+          "a",
+          "b",
+          "c"
+        ]
+      },
+      {
+        "label": "Process b",
+        "detail": "No match; take the larger neighboring prefix.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "row": [
+            0,
+            1,
+            1
+          ]
+        },
+        "values": [
+          "a",
+          "b",
+          "c"
+        ]
+      },
+      {
+        "label": "Process c",
+        "detail": "Matching c extends LCS a to ac.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "row": [
+            0,
+            1,
+            2
+          ],
+          "answer": 2
+        },
+        "values": [
+          "a",
+          "b",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "lis",
+    "title": "LIS with binary search",
+    "category": "Recursion & DP",
+    "problemId": "dsa-133",
+    "useWhen": "Find a strictly increasing subsequence length efficiently.",
+    "invariant": "tails[k] is the smallest possible tail for a length k+1 subsequence.",
+    "time": "O(n log n)",
+    "space": "O(n)",
+    "pitfall": "The tails array alone is not necessarily an actual subsequence; reconstruction needs predecessors.",
+    "values": [
+      3,
+      1,
+      5,
+      2,
+      6
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Read 3",
+        "detail": "Start a length-one subsequence.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "tails": [
+            3
+          ]
+        },
+        "values": [
+          3,
+          1,
+          5,
+          2,
+          6
+        ]
+      },
+      {
+        "label": "Read 1",
+        "detail": "Replace the tail with a smaller value.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "tails": [
+            1
+          ]
+        },
+        "values": [
+          3,
+          1,
+          5,
+          2,
+          6
+        ]
+      },
+      {
+        "label": "Read 5",
+        "detail": "Extend to length two.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "tails": [
+            1,
+            5
+          ]
+        },
+        "values": [
+          3,
+          1,
+          5,
+          2,
+          6
+        ]
+      },
+      {
+        "label": "Read 2",
+        "detail": "Improve the length-two tail.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "tails": [
+            1,
+            2
+          ]
+        },
+        "values": [
+          3,
+          1,
+          5,
+          2,
+          6
+        ]
+      },
+      {
+        "label": "Read 6",
+        "detail": "Extend to length three.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "tails": [
+            1,
+            2,
+            6
+          ],
+          "answer": 3
+        },
+        "values": [
+          3,
+          1,
+          5,
+          2,
+          6
+        ]
+      }
+    ]
+  },
+  {
+    "id": "greedy",
+    "title": "Greedy interval scheduling",
+    "category": "Sorting & order",
+    "problemId": "dsa-248",
+    "useWhen": "Select the maximum count of non-overlapping intervals.",
+    "invariant": "The selected compatible interval ends as early as possible.",
+    "time": "O(n log n)",
+    "space": "O(n) sorted copy",
+    "pitfall": "This example requires the next start to be strictly after the previous finish. Changing the goal to total value calls for weighted interval DP.",
+    "values": [
+      "[1,3]",
+      "[2,4]",
+      "[4,5]",
+      "[6,7]"
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Sort by finish",
+        "detail": "Sort by finish time. Meetings here require strictly separated endpoints.",
+        "active": [],
+        "state": {
+          "selected": []
+        },
+        "values": [
+          "[1,3]",
+          "[2,4]",
+          "[4,5]",
+          "[6,7]"
+        ]
+      },
+      {
+        "label": "Choose [1,3]",
+        "detail": "Keep the earliest finish.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "lastEnd": 3,
+          "selected": [
+            [
+              1,
+              3
+            ]
+          ]
+        },
+        "values": [
+          "[1,3]",
+          "[2,4]",
+          "[4,5]",
+          "[6,7]"
+        ]
+      },
+      {
+        "label": "Skip [2,4]",
+        "detail": "It overlaps the chosen interval.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "lastEnd": 3
+        },
+        "values": [
+          "[1,3]",
+          "[2,4]",
+          "[4,5]",
+          "[6,7]"
+        ]
+      },
+      {
+        "label": "Choose [4,5]",
+        "detail": "4 is strictly after the last finish 3.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "lastEnd": 5,
+          "selected": [
+            [
+              1,
+              3
+            ],
+            [
+              4,
+              5
+            ]
+          ]
+        },
+        "values": [
+          "[1,3]",
+          "[2,4]",
+          "[4,5]",
+          "[6,7]"
+        ]
+      },
+      {
+        "label": "Choose [6,7]",
+        "detail": "6 is strictly after 5. Three meetings fit.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "answer": 3,
+          "selected": [
+            [
+              1,
+              3
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              6,
+              7
+            ]
+          ]
+        },
+        "values": [
+          "[1,3]",
+          "[2,4]",
+          "[4,5]",
+          "[6,7]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "xor",
+    "title": "XOR cancellation",
+    "category": "Bits & strings",
+    "problemId": "dsa-169",
+    "useWhen": "Find the unique integer when every other value appears exactly twice.",
+    "invariant": "Equal values cancel because x XOR x = 0.",
+    "time": "O(n)",
+    "space": "O(1)",
+    "pitfall": "This contract fails when duplicates do not occur exactly twice.",
+    "values": [
+      4,
+      1,
+      4,
+      2,
+      1
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Accumulate 4",
+        "detail": "0 XOR 4 = 4.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "xor": 4
+        },
+        "values": [
+          4,
+          1,
+          4,
+          2,
+          1
+        ]
+      },
+      {
+        "label": "Read 1",
+        "detail": "4 XOR 1 = 5.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "xor": 5
+        },
+        "values": [
+          4,
+          1,
+          4,
+          2,
+          1
+        ]
+      },
+      {
+        "label": "Cancel 4",
+        "detail": "5 XOR 4 = 1.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "xor": 1
+        },
+        "values": [
+          4,
+          1,
+          4,
+          2,
+          1
+        ]
+      },
+      {
+        "label": "Read 2",
+        "detail": "1 XOR 2 = 3.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "xor": 3
+        },
+        "values": [
+          4,
+          1,
+          4,
+          2,
+          1
+        ]
+      },
+      {
+        "label": "Cancel 1",
+        "detail": "3 XOR 1 = 2. The unique value is 2.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "answer": 2
+        },
+        "values": [
+          4,
+          1,
+          4,
+          2,
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "id": "kmp",
+    "title": "KMP string matching",
+    "category": "Bits & strings",
+    "problemId": "dsa-180",
+    "useWhen": "Search a pattern without restarting after each mismatch.",
+    "invariant": "The matched prefix is also a suffix of the text processed so far.",
+    "time": "O(n + m)",
+    "space": "O(m)",
+    "pitfall": "On mismatch, fall back through prefix lengths instead of resetting the text pointer.",
+    "values": [
+      "a",
+      "b",
+      "a",
+      "b",
+      "a",
+      "c"
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Pattern abac",
+        "detail": "Its prefix function is [0,0,1,0].",
+        "active": [],
+        "state": {
+          "lps": [
+            0,
+            0,
+            1,
+            0
+          ],
+          "matched": 0
+        },
+        "values": [
+          "a",
+          "b",
+          "a",
+          "b",
+          "a",
+          "c"
+        ]
+      },
+      {
+        "label": "Match aba",
+        "detail": "Three pattern characters match at text indices 0..2.",
+        "active": [
+          "0",
+          "1",
+          "2"
+        ],
+        "state": {
+          "matched": 3
+        },
+        "values": [
+          "a",
+          "b",
+          "a",
+          "b",
+          "a",
+          "c"
+        ]
+      },
+      {
+        "label": "Mismatch at index 3",
+        "detail": "Expected c, found b. Fall back from 3 to lps[2]=1.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "matched": 1
+        },
+        "values": [
+          "a",
+          "b",
+          "a",
+          "b",
+          "a",
+          "c"
+        ]
+      },
+      {
+        "label": "Reuse b",
+        "detail": "The same b now matches pattern index 1; continue with a,c.",
+        "active": [
+          "3",
+          "4",
+          "5"
+        ],
+        "state": {
+          "matched": 4,
+          "answer": 2
+        },
+        "values": [
+          "a",
+          "b",
+          "a",
+          "b",
+          "a",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "merge-k",
+    "title": "K-way merge",
+    "category": "Sorting & order",
+    "problemId": "dsa-091",
+    "useWhen": "Merge multiple sorted sequences with one frontier item per sequence.",
+    "invariant": "The heap contains the smallest unconsumed value from each active sequence.",
+    "time": "O(N log k)",
+    "space": "O(k) auxiliary",
+    "pitfall": "Advance only the sequence whose head was removed.",
+    "values": [
+      1,
+      4,
+      2,
+      5,
+      3,
+      6
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Seed frontier",
+        "detail": "Sequences are [1,4], [2,5], [3,6].",
+        "active": [],
+        "state": {
+          "heap": [
+            1,
+            2,
+            3
+          ]
+        },
+        "values": [
+          1,
+          4,
+          2,
+          5,
+          3,
+          6
+        ]
+      },
+      {
+        "label": "Pop 1",
+        "detail": "Advance the first sequence to 4.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "output": [
+            1
+          ],
+          "heap": [
+            2,
+            3,
+            4
+          ]
+        },
+        "values": [
+          1,
+          4,
+          2,
+          5,
+          3,
+          6
+        ]
+      },
+      {
+        "label": "Pop 2",
+        "detail": "Advance the second sequence to 5.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "output": [
+            1,
+            2
+          ],
+          "heap": [
+            3,
+            4,
+            5
+          ]
+        },
+        "values": [
+          1,
+          4,
+          2,
+          5,
+          3,
+          6
+        ]
+      },
+      {
+        "label": "Pop 3",
+        "detail": "Advance the third sequence to 6.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "output": [
+            1,
+            2,
+            3
+          ],
+          "heap": [
+            4,
+            5,
+            6
+          ]
+        },
+        "values": [
+          1,
+          4,
+          2,
+          5,
+          3,
+          6
+        ]
+      },
+      {
+        "label": "Drain frontier",
+        "detail": "No new heads remain after 4,5,6.",
+        "active": [
+          "1",
+          "3",
+          "5"
+        ],
+        "state": {
+          "answer": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        "values": [
+          1,
+          4,
+          2,
+          5,
+          3,
+          6
+        ]
+      }
+    ]
+  },
+  {
+    "id": "multi-bfs",
+    "title": "Multi-source BFS",
+    "category": "Graphs & paths",
+    "problemId": "dsa-102",
+    "useWhen": "Expand several simultaneous sources in distance layers.",
+    "invariant": "All cells in the current frontier share the same earliest arrival time.",
+    "time": "O(rows × columns)",
+    "space": "O(rows × columns)",
+    "pitfall": "Mark cells when enqueued and account for cells that no source can reach.",
+    "values": [
+      2,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0,
+      1,
+      1
+    ],
+    "kind": "matrix",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Initial sources",
+        "detail": "The rotten orange at (0,0) is the only time-zero source.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "minute": 0,
+          "fresh": 5
+        },
+        "values": [
+          2,
+          1,
+          1,
+          0,
+          1,
+          0,
+          0,
+          1,
+          1
+        ]
+      },
+      {
+        "label": "Minute one",
+        "detail": "Infect (0,1).",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "minute": 1,
+          "fresh": 4
+        },
+        "values": [
+          2,
+          2,
+          1,
+          0,
+          1,
+          0,
+          0,
+          1,
+          1
+        ]
+      },
+      {
+        "label": "Minute two",
+        "detail": "Infect (0,2) and (1,1).",
+        "active": [
+          "2",
+          "4"
+        ],
+        "state": {
+          "minute": 2,
+          "fresh": 2
+        },
+        "values": [
+          2,
+          2,
+          2,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1
+        ]
+      },
+      {
+        "label": "Minute three",
+        "detail": "Infect (2,1).",
+        "active": [
+          "7"
+        ],
+        "state": {
+          "minute": 3,
+          "fresh": 1
+        },
+        "values": [
+          2,
+          2,
+          2,
+          0,
+          2,
+          0,
+          0,
+          2,
+          1
+        ]
+      },
+      {
+        "label": "Minute four",
+        "detail": "Infect the last fresh cell (2,2).",
+        "active": [
+          "8"
+        ],
+        "state": {
+          "answer": 4,
+          "fresh": 0
+        },
+        "values": [
+          2,
+          2,
+          2,
+          0,
+          2,
+          0,
+          0,
+          2,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "id": "bipartite",
+    "title": "Bipartite coloring",
+    "category": "Graphs & paths",
+    "problemId": "dsa-103",
+    "useWhen": "Check whether adjacent vertices can always receive opposite colors.",
+    "invariant": "Every examined edge connects different colors.",
+    "time": "O(V + E)",
+    "space": "O(V)",
+    "pitfall": "Start a new traversal for every disconnected component.",
+    "values": [
+      "A",
+      "B",
+      "C"
+    ],
+    "kind": "graph",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        2
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Color A",
+        "detail": "Assign A color 0.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "colors": [
+            0,
+            null,
+            null
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Color neighbors",
+        "detail": "B and C must both receive color 1.",
+        "active": [
+          "1",
+          "2"
+        ],
+        "state": {
+          "colors": [
+            0,
+            1,
+            1
+          ]
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Conflict on B—C",
+        "detail": "Both endpoints have color 1; the triangle is not bipartite.",
+        "active": [
+          "1",
+          "2"
+        ],
+        "state": {
+          "answer": false
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "directed-cycle",
+    "title": "DFS active-stack cycle detection",
+    "category": "Graphs & paths",
+    "problemId": "dsa-220",
+    "useWhen": "Detect directed back edges without confusing them with cross edges.",
+    "invariant": "Gray vertices are on the current DFS path; black vertices are fully processed.",
+    "time": "O(V + E)",
+    "space": "O(V)",
+    "pitfall": "A visited vertex alone does not prove a directed cycle.",
+    "values": [
+      "A",
+      "B",
+      "C"
+    ],
+    "kind": "graph",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        0
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Enter A",
+        "detail": "Mark A gray.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "gray": [
+            "A"
+          ],
+          "black": []
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Descend B",
+        "detail": "A and B remain on the active path.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "gray": [
+            "A",
+            "B"
+          ],
+          "black": []
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Descend C",
+        "detail": "Follow B→C.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "gray": [
+            "A",
+            "B",
+            "C"
+          ],
+          "black": []
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      {
+        "label": "Back edge C→A",
+        "detail": "A is gray; the active path closes a cycle.",
+        "active": [
+          "2",
+          "0"
+        ],
+        "state": {
+          "answer": true
+        },
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tree-lca",
+    "title": "Lowest common ancestor",
+    "category": "Trees & tries",
+    "problemId": "dsa-083",
+    "useWhen": "Find where two root-to-node paths meet most deeply.",
+    "invariant": "A subtree reports whether it contains either target or an already found ancestor.",
+    "time": "O(n)",
+    "space": "O(h)",
+    "pitfall": "Define behavior when one target is absent; do not silently assume both exist.",
+    "values": [
+      4,
+      2,
+      6,
+      1,
+      3
+    ],
+    "kind": "tree",
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "steps": [
+      {
+        "label": "Look for 1 and 3",
+        "detail": "Explore the left subtree of 4.",
+        "active": [
+          "0",
+          "1"
+        ],
+        "state": {
+          "targets": [
+            1,
+            3
+          ]
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Find 1",
+        "detail": "The left child of 2 reports a target.",
+        "active": [
+          "3"
+        ],
+        "state": {
+          "leftResult": 1
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Find 3",
+        "detail": "The right child of 2 reports the other target.",
+        "active": [
+          "4"
+        ],
+        "state": {
+          "rightResult": 3
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      },
+      {
+        "label": "Combine at 2",
+        "detail": "Targets arrive from different branches; 2 is their lowest common ancestor.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "answer": 2
+        },
+        "values": [
+          4,
+          2,
+          6,
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "interval-merge",
+    "title": "Merge overlapping intervals",
+    "category": "Sorting & order",
+    "problemId": "dsa-157",
+    "useWhen": "Compress overlapping ranges after sorting by start.",
+    "invariant": "The output contains disjoint merged intervals covering every processed input.",
+    "time": "O(n log n)",
+    "space": "O(n) including output",
+    "pitfall": "Clarify whether touching endpoints count as overlap.",
+    "values": [
+      "[1,3]",
+      "[2,6]",
+      "[8,10]"
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Sort starts",
+        "detail": "Begin the output with [1,3].",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "output": [
+            [
+              1,
+              3
+            ]
+          ]
+        },
+        "values": [
+          "[1,3]",
+          "[2,6]",
+          "[8,10]"
+        ]
+      },
+      {
+        "label": "Overlap",
+        "detail": "2 <= 3, so extend the end to 6.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "output": [
+            [
+              1,
+              6
+            ]
+          ]
+        },
+        "values": [
+          "[1,3]",
+          "[2,6]",
+          "[8,10]"
+        ]
+      },
+      {
+        "label": "Gap",
+        "detail": "8 > 6, so start a new interval.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "answer": [
+            [
+              1,
+              6
+            ],
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        "values": [
+          "[1,3]",
+          "[2,6]",
+          "[8,10]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "coin-change",
+    "title": "Unbounded coin-change DP",
+    "category": "Recursion & DP",
+    "problemId": "dsa-130",
+    "useWhen": "Minimize the number of coins for a target amount.",
+    "invariant": "dp[s] is the fewest coins among all choices that end at sum s.",
+    "time": "O(amount × coin types)",
+    "space": "O(amount)",
+    "pitfall": "An unreachable state is not zero; use infinity and translate it at the boundary.",
+    "values": [
+      0,
+      "∞",
+      "∞",
+      "∞",
+      "∞",
+      "∞",
+      "∞"
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Amount zero",
+        "detail": "No coins are needed to form 0.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "coins": [
+            1,
+            3,
+            4
+          ],
+          "dp": [
+            0,
+            "∞",
+            "∞",
+            "∞",
+            "∞",
+            "∞",
+            "∞"
+          ]
+        },
+        "values": [
+          0,
+          "∞",
+          "∞",
+          "∞",
+          "∞",
+          "∞",
+          "∞"
+        ]
+      },
+      {
+        "label": "Amounts 1 and 2",
+        "detail": "Only coin 1 fits.",
+        "active": [
+          "1",
+          "2"
+        ],
+        "state": {
+          "dp": [
+            0,
+            1,
+            2,
+            "∞",
+            "∞",
+            "∞",
+            "∞"
+          ]
+        },
+        "values": [
+          0,
+          1,
+          2,
+          "∞",
+          "∞",
+          "∞",
+          "∞"
+        ]
+      },
+      {
+        "label": "Amounts 3 and 4",
+        "detail": "A single 3 or 4 beats repeated ones.",
+        "active": [
+          "3",
+          "4"
+        ],
+        "state": {
+          "dp": [
+            0,
+            1,
+            2,
+            1,
+            1,
+            "∞",
+            "∞"
+          ]
+        },
+        "values": [
+          0,
+          1,
+          2,
+          1,
+          1,
+          "∞",
+          "∞"
+        ]
+      },
+      {
+        "label": "Finish amount 6",
+        "detail": "3+3 uses two coins; a largest-coin-first greedy method would use 4+1+1.",
+        "active": [
+          "5",
+          "6"
+        ],
+        "state": {
+          "dp": [
+            0,
+            1,
+            2,
+            1,
+            1,
+            2,
+            2
+          ],
+          "answer": 2
+        },
+        "values": [
+          0,
+          1,
+          2,
+          1,
+          1,
+          2,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "id": "edit-distance",
+    "title": "Edit distance",
+    "category": "Recursion & DP",
+    "problemId": "dsa-136",
+    "useWhen": "Minimize insertions, deletions, and replacements between strings.",
+    "invariant": "Each cell contains the best cost for its two prefixes.",
+    "time": "O(mn)",
+    "space": "O(min(m,n)) for distance only",
+    "pitfall": "Do not confuse unit-cost edit distance with LCS or substring length.",
+    "values": [
+      "c",
+      "a",
+      "t"
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Initialize empty prefixes",
+        "detail": "Converting an empty string to cut costs 0,1,2,3 inserts.",
+        "active": [],
+        "state": {
+          "row": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        "values": [
+          "c",
+          "a",
+          "t"
+        ]
+      },
+      {
+        "label": "Process c",
+        "detail": "The c characters match.",
+        "active": [
+          "0"
+        ],
+        "state": {
+          "row": [
+            1,
+            0,
+            1,
+            2
+          ]
+        },
+        "values": [
+          "c",
+          "a",
+          "t"
+        ]
+      },
+      {
+        "label": "Process a",
+        "detail": "Replace a by u for a cost of 1.",
+        "active": [
+          "1"
+        ],
+        "state": {
+          "row": [
+            2,
+            1,
+            1,
+            2
+          ]
+        },
+        "values": [
+          "c",
+          "a",
+          "t"
+        ]
+      },
+      {
+        "label": "Process t",
+        "detail": "The final t characters match; total distance is 1.",
+        "active": [
+          "2"
+        ],
+        "state": {
+          "row": [
+            3,
+            2,
+            2,
+            1
+          ],
+          "answer": 1
+        },
+        "values": [
+          "c",
+          "a",
+          "t"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "interval-dp",
+    "title": "Interval dynamic programming",
+    "category": "Recursion & DP",
+    "problemId": "dsa-143",
+    "useWhen": "Try a split point when a problem combines two contiguous subranges.",
+    "invariant": "Shorter intervals are solved before intervals that depend on them.",
+    "time": "O(n³)",
+    "space": "O(n²)",
+    "pitfall": "Define whether boundaries refer to matrices or dimension-array indices.",
+    "values": [
+      10,
+      30,
+      5,
+      60
+    ],
+    "kind": "array",
+    "edges": [],
+    "steps": [
+      {
+        "label": "Dimensions",
+        "detail": "Matrices are 10×30, 30×5, and 5×60.",
+        "active": [],
+        "state": {
+          "twoMatrixCosts": [
+            1500,
+            9000
+          ]
+        },
+        "values": [
+          10,
+          30,
+          5,
+          60
+        ]
+      },
+      {
+        "label": "Split after first matrix",
+        "detail": "A × (B × C): 9000 + 10×30×60 = 27000.",
+        "active": [
+          "0",
+          "1",
+          "3"
+        ],
+        "state": {
+          "candidate": 27000
+        },
+        "values": [
+          10,
+          30,
+          5,
+          60
+        ]
+      },
+      {
+        "label": "Split after second matrix",
+        "detail": "(A × B) × C: 1500 + 10×5×60 = 4500.",
+        "active": [
+          "0",
+          "2",
+          "3"
+        ],
+        "state": {
+          "candidate": 4500
+        },
+        "values": [
+          10,
+          30,
+          5,
+          60
+        ]
+      },
+      {
+        "label": "Choose the smaller cost",
+        "detail": "Multiplication order changes cost, not the resulting matrix dimensions.",
+        "active": [
+          "0",
+          "3"
+        ],
+        "state": {
+          "answer": 4500
+        },
+        "values": [
+          10,
+          30,
+          5,
+          60
+        ]
+      }
+    ]
+  }
+]
