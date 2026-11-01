@@ -1,12 +1,13 @@
-Switch 2.4 adds more personality and makes the coding loop smoother: write, test, submit, and save your progress.
+Switch 2.5 gives the learning workspace a floating layout inspired by the approved spatial design.
 
-- 20 themes in total: the original ten plus Retro Terminal, Pokémon, Naruto, One Piece, Spider-Man, Superman, Neon Pop, Cyberpunk, Arcade, and Candy Pop. New palettes use original UI styling, with brief pop animations and reduced-motion support.
-- `#include <bits/stdc++.h>` now works in the Mac C++17 runner through a bundled compatibility header. GNU-only extensions are not added.
-- Enter preserves indentation; opening braces and Python blocks indent the next line. Paired braces, closing-brace indentation, and multiline Tab/Shift+Tab are supported.
-- 2,006 test cases across all 250 problems, with at least eight per problem. Existing sample cases remain available separately from the full submission suite.
-- Submit checks every case, records acceptance for the correct learner, marks the problem complete, and schedules revision. Failed, incomplete, or stale-code submissions do not mark a problem complete. Sample and custom runs never auto-complete a problem.
-- The native runner reports structured per-case results separately from debug output. C++/Python Submit requires this Mac release; JavaScript Submit also works on the website.
-- Existing profiles, code drafts, notes, bookmarks, and completion keys are retained.
+- A compact top menu replaces the permanent sidebar. Expand it to reach every study section and switch learner profiles; Escape closes it.
+- Focus mode hides navigation with an always-available Show menu button to bring it back.
+- All 20 light and dark themes now use their own gradient pair, floating panels, and coordinated controls. Code and reading surfaces stay clear and legible.
+- The overview pairs a curved BFS teaching trace with your next unsolved problem, an unread lesson, and your real revision queue.
+- Theme and focus changes preserve the editor, cursor, selection, and Undo history. Theme preferences continue to save on your device.
+- The same layout extends across the problem set, coding studio, Pattern Lab, theory, design, company tracks, and Interview studio, with a responsive menu for phones and reduced-motion support.
+
+The 250-problem curriculum, 2,006 submission cases, typed C++17/Python solutions, indentation support, and full-suite Submit behavior are retained. Existing profiles, progress, code drafts, notes, and bookmarks keep their storage keys.
 
 [Open the website](https://23anish.github.io/Switch/).
 
@@ -14,6 +15,6 @@ Download **Switch-macOS.zip**, unzip it, and replace the previous **Switch.app**
 
 C++ execution requires Apple Command Line Tools; Python requires Python 3. JavaScript needs neither. Code runs locally on your Mac, so run only code you trust.
 
-Validation covers 500 standalone C++ starter/solution snippets, all 2,006 cases in C++/Python/JavaScript, editor indentation and submission regressions, native header compatibility, structured results, compile failures, early exits, and debug-output handling. These are practice checks, not an exhaustive judge.
+Validation includes navigation/focus/profile/theme regressions, all 20 palettes in the browser, phone layouts, existing editor/submission and learning-trace checks, curriculum validation, and native runner self-tests. These are practice checks, not an exhaustive judge.
 
 The attached SHA256SUMS.txt records this package’s checksum. GitHub Actions builds it from this release’s public source.

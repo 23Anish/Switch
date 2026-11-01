@@ -25,6 +25,7 @@ jobs:
       - run: python3 scripts/check-studio.py
       - run: node scripts/check-immersive.js
       - run: node scripts/check-editor-submit.js
+      - run: node scripts/check-navigation.js
       - run: python3 scripts/check-theory.py
       - run: python3 scripts/check-content.py
       - uses: actions/configure-pages@v5

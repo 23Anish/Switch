@@ -18,25 +18,36 @@ function buildBfsTrace() {
 }
 function bfsGraphic(frame) {
   const xy = [[240,38],[135,115],[345,115],[75,200],[185,200],[295,200],[405,200]];
-  return `<svg viewBox="0 0 480 250" role="img" aria-label="Binary-tree BFS trace; nodes 1 through 7"><g class="bfs-edges">${[2,3,4,5,6,7].map(n=>{const a=xy[Math.floor(n/2)-1],b=xy[n-1];return `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`}).join('')}</g>${xy.map(([x,y],i)=>`<g data-home-node="${i+1}" class="bfs-node ${frame.queue.includes(i+1)?'queued':''} ${frame.visited.includes(i+1)?'visited':''} ${frame.current===i+1?'current':''}"><circle cx="${x}" cy="${y}" r="22"/><text x="${x}" y="${y+5}" text-anchor="middle">${i+1}</text></g>`).join('')}</svg>`;
+  return `<svg viewBox="0 0 480 250" role="img" aria-label="Binary-tree BFS trace; nodes 1 through 7"><g class="bfs-edges">${[2,3,4,5,6,7].map(n=>{
+    const a=xy[Math.floor(n/2)-1],b=xy[n-1],discovered=frame.queue.includes(n)||frame.visited.includes(n);
+    return `<path data-home-edge="${n}" class="${discovered?'discovered':''} ${frame.current===n?'current':''}" d="M ${a[0]} ${a[1]} C ${a[0]} ${a[1]+38}, ${b[0]} ${b[1]-38}, ${b[0]} ${b[1]}" fill="none"/>`;
+  }).join('')}</g>${xy.map(([x,y],i)=>`<g data-home-node="${i+1}" class="bfs-node ${frame.queue.includes(i+1)?'queued':''} ${frame.visited.includes(i+1)?'visited':''} ${frame.current===i+1?'current':''}"><circle cx="${x}" cy="${y}" r="22"/><text x="${x}" y="${y+5}" text-anchor="middle">${i+1}</text></g>`).join('')}</svg>`;
 }
 function traceControls(kind, index, total) {
   return `<div class="trace-controls" data-player="${kind}"><button data-trace-action="reset" aria-label="Restart ${kind} trace">↺</button><button data-trace-action="previous" aria-label="Previous ${kind} step" ${index===0?'disabled':''}>←</button><button data-trace-action="play" class="trace-play" aria-label="Play ${kind} trace">▶ Play</button><button data-trace-action="next" aria-label="Next ${kind} step" ${index===total-1?'disabled':''}>Step →</button><span class="trace-counter">${index+1} / ${total}</span></div>`;
 }
 function queueChips(values) { return values.length?values.map(v=>`<span>${esc(v)}</span>`).join(''):'<small>empty</small>'; }
 function learningHero(next, recentWork) {
-  const f=homeBfs[homeFrame];
-  return `<section class="learning-hero" aria-labelledby="landing-title"><div class="learning-canvas-main"><div class="learning-hero-heading"><div><p class="eyebrow">YOUR NEXT CHAPTER / SWITCH</p><h1 id="landing-title">Understand deeply.<br><em>Build what’s next.</em></h1></div><div class="learning-counts"><span><strong>${D.length}</strong> problems</span><span><strong>${L.length}</strong> lessons</span><span><strong>${PATTERNS.length}</strong> patterns</span></div></div><div class="learning-graph">${bfsGraphic(f)}<div class="graph-key"><span>○ Undiscovered</span><span>◉ Queued</span><span>● Visited</span></div>${traceControls('home',homeFrame,homeBfs.length)}</div><div class="hero-actions">${next?`<button class="primary" data-problem="${next.id}">${recentWork?'Continue your practice':'Start your first problem'} →</button>`:''}<button data-go="visual">Explore Pattern Lab ↗</button></div></div><div class="learning-canvas-side"><div class="trace-explanation"><p class="eyebrow">BREADTH-FIRST SEARCH / C++17</p><p id="home-trace-caption" aria-live="polite">${esc(f.text)}</p></div><div class="learning-code"><p class="code-caption">Non-null root in this example</p><pre><code><span data-bfs-line="seed" class="${f.line==='seed'?'current-line':''}">queue&lt;TreeNode*&gt; frontier;
+  const f=homeBfs[homeFrame],learner=profile();
+  const nextLesson=L.find(l=>!learner.read[l.id]&&!isAI(l)&&!['LLD','HLD'].includes(l.track))||L.find(l=>!learner.read[l.id])||L[0];
+  const due=D.filter(p=>typeof learner.reviews?.[p.id]==='number'&&learner.reviews[p.id]<=Date.now()).length;
+  const scheduled=D.filter(p=>typeof learner.reviews?.[p.id]==='number').length;
+  const revisiting=next&&!!learner.done[next.id];
+  const practiceLabel=revisiting?'Revisit this problem':recentWork?'Continue your practice':'Start your first problem';
+  const reviewCopy=due?`${due} ${due===1?'problem is':'problems are'} ready for recall.`:scheduled?'Your scheduled reviews will appear here when due.':'Complete a problem to start your revision queue.';
+  return `<div class="spatial-home-grid"><section class="learning-hero" aria-labelledby="landing-title"><div class="learning-hero-heading"><div><p class="eyebrow">YOUR NEXT CHAPTER / SWITCH</p><h1 id="landing-title">Understand deeply.<br><em>Build what’s next.</em></h1></div><div class="learning-counts"><span><strong>${D.length}</strong> problems</span><span><strong>${L.length}</strong> lessons</span><span><strong>${PATTERNS.length}</strong> patterns</span></div></div><div class="learning-graph">${bfsGraphic(f)}<div class="graph-key"><span>○ Undiscovered</span><span>◉ Queued</span><span>● Visited</span></div>${traceControls('home',homeFrame,homeBfs.length)}</div><div class="spatial-explanation"><div class="trace-explanation"><p class="eyebrow">BREADTH-FIRST SEARCH / C++17</p><p id="home-trace-caption" aria-live="polite">${esc(f.text)}</p><div class="queue-state"><span class="eyebrow">QUEUE / FRONT → BACK</span><div class="queue-chips" id="home-queue" aria-label="Queue, front to back">${queueChips(f.queue)}</div><small>Visit order: <span id="home-visited">${f.visited.join(' → ')||'none yet'}</span></small></div></div><div class="learning-code"><p class="code-caption">Non-null root in this example</p><pre><code><span data-bfs-line="seed" class="${f.line==='seed'?'current-line':''}">queue&lt;TreeNode*&gt; frontier;
 frontier.push(root);</span>
 while (!frontier.empty()) {
 <span data-bfs-line="pop" class="${f.line==='pop'?'current-line':''}">  auto* node = frontier.front();
   frontier.pop();</span>
-<span data-bfs-line="push" class="${f.line==='push'?'current-line':''}">  if (node-&gt;left)
-    frontier.push(node-&gt;left);
-  if (node-&gt;right)
-    frontier.push(node-&gt;right);</span>
-}</code></pre><div class="queue-state"><span class="eyebrow">QUEUE / FRONT → BACK</span><div class="queue-chips" id="home-queue">${queueChips(f.queue)}</div><small>Visit order: <span id="home-visited">${f.visited.join(' → ')||'none yet'}</span></small></div></div></div></section>`;
+<span data-bfs-line="push" class="${f.line==='push'?'current-line':''}">  if (node-&gt;left) frontier.push(node-&gt;left);
+  if (node-&gt;right) frontier.push(node-&gt;right);</span>
+}</code></pre></div></div><div class="hero-actions">${next?`<button class="primary" data-problem="${next.id}">${practiceLabel} →</button>`:''}<button data-go="visual">Explore Pattern Lab ↗</button></div></section><aside class="spatial-session session-card" aria-labelledby="next-session-title"><p class="eyebrow">YOUR NEXT SESSION</p><h2 id="next-session-title">${revisiting?'Keep a good pattern fresh.':'Start with one good problem.'}</h2><div class="session-list">${next?`<button class="session-row" data-problem="${next.id}"><span class="session-number" aria-hidden="true">01</span><span class="session-copy"><strong>${esc(next.title)}</strong><small>${esc(revisiting?'Revisit a solved problem':next.topic)}</small></span><span class="pill ${esc(next.difficulty)}">${esc(next.difficulty)}</span><span class="session-arrow" aria-hidden="true">↗</span></button>`:''}${nextLesson?`<button class="session-row" data-lesson="${nextLesson.id}"><span class="session-number" aria-hidden="true">02</span><span class="session-copy"><strong>${esc(nextLesson.title)}</strong><small>${learner.read[nextLesson.id]?'Revisit · ':''}${esc(nextLesson.track)} · ${nextLesson.minutes} min</small></span><span class="session-arrow" aria-hidden="true">↗</span></button>`:''}<button class="session-row" data-go="review"><span class="session-number" aria-hidden="true">↻</span><span class="session-copy"><strong>${due?`${due} ready for review`:'Revision queue'}</strong><small>${reviewCopy}</small></span><span class="session-arrow" aria-hidden="true">↗</span></button></div><p class="session-footnote">Practice, connect the idea, then return for recall.</p><button class="linkbutton" data-go="plan">See your study roadmap →</button></aside></div>`;
 }
+// The next-session panel now sits beside the trace; retain the real curriculum,
+// progress and company sections without repeating the same practice list below.
+const dashboardBeforeSpatialHome=dashboard;
+dashboard=function(){return dashboardBeforeSpatialHome().replace(/<section class="home-session-grid"[\s\S]*?<\/section>\s*(?=<section class="company-strip")/,'');};
 function stopPlayback() {
   clearTimeout(playbackTimer); playbackTimer=null; playback=null;
   $$('[data-trace-action="play"]').forEach(b=>{b.textContent='▶ Play';b.setAttribute('aria-label','Play '+b.closest('[data-player]').dataset.player+' trace')});
@@ -86,6 +97,7 @@ function bindTraceControls() {
 function paintHomeFrame() {
   const f=homeBfs[homeFrame];
   $$('[data-home-node]').forEach(el=>{const n=Number(el.dataset.homeNode);el.classList.toggle('queued',f.queue.includes(n));el.classList.toggle('visited',f.visited.includes(n));el.classList.toggle('current',f.current===n)});
+  $$('[data-home-edge]').forEach(el=>{const n=Number(el.dataset.homeEdge);el.classList.toggle('discovered',f.queue.includes(n)||f.visited.includes(n));el.classList.toggle('current',f.current===n)});
   $('#home-trace-caption').textContent=f.text;$('#home-queue').innerHTML=queueChips(f.queue);$('#home-visited').textContent=f.visited.join(' → ')||'none yet';
   $$('[data-bfs-line]').forEach(el=>el.classList.toggle('current-line',el.dataset.bfsLine===f.line));
 }

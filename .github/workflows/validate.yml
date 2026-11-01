@@ -9,8 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: python3 scripts/build-data.py
       - run: node scripts/check-javascript.js
       - run: node scripts/check-workspace.js
       - run: node scripts/check-inputs.js
+      - run: node scripts/check-navigation.js
       - run: python3 scripts/check-theory.py
       - run: python3 scripts/check-content.py

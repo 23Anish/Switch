@@ -10,7 +10,8 @@ An immersive, local-first studio for preparing your next engineering role.
 - Clear input/output contracts, constraints, worked examples, baseline and improved approaches, complexity notes, and C++17/Python 3 reference solutions.
 - A coding workspace with saved drafts, automatic indentation, brace-aware newlines, multiline Tab/Shift+Tab, named argument fields, and optional raw JSON input. C++ is the default language.
 - Submit checks the full suite (at least eight cases per problem, 2,006 total) and marks the submitting learner’s problem complete only after every case passes. Sample and custom runs do not change completion.
-- An interactive BFS learning canvas, collapsible topic sheet, searchable problem table, sorting, and bookmarks.
+- A floating top menu, grouped navigation, and a focus mode that hides navigation while you study.
+- An interactive BFS learning canvas with curved connections, a personal next-session panel, collapsible topic sheet, searchable problem table, sorting, and bookmarks.
 - 24 executable worked theory examples with walkthroughs, diagrams, expected output, and follow-up exercises.
 - Six interactive theory traces: CPU/I/O overlap, cumulative TCP ACKs, guarded inventory updates, TTL/LRU, token buckets, and permission-aware RAG.
 - Core CS: operating systems, networks, databases, OOP/C++, and distributed systems.
@@ -20,7 +21,7 @@ An immersive, local-first studio for preparing your next engineering role.
 - An Interview studio for code comprehension, debugging, patch validation, and explicit tool-policy checks.
 - 45 guided patterns with searchable categories, play/pause/replay and step controls, state snapshots, invariants, complexity, and linked C++/Python practice: arrays, trees, tries, graphs, shortest paths, DSU, backtracking, DP, and strings.
 - A 12-week roadmap, a mock timer, notes, spaced revision, and separate learner profiles.
-- Twenty light and dark themes, including Retro Terminal, Pokémon, Naruto, One Piece, Spider-Man, Superman, Neon Pop, Cyberpunk, Arcade, and Candy Pop. Progress and theme preferences stay on your device; JSON export/import moves them between devices.
+- Twenty light and dark gradient themes, including Retro Terminal, Pokémon, Naruto, One Piece, Spider-Man, Superman, Neon Pop, Cyberpunk, Arcade, and Candy Pop. Theme and focus controls preserve your editor cursor and Undo history. Progress and theme preferences stay on your device; JSON export/import moves them between devices.
 
 ## Choose how to use it
 
@@ -46,7 +47,7 @@ The universal app supports Apple Silicon and Intel Macs with macOS 12 or newer. 
 
 ## Coding contract
 
-C++ starters and solutions are standard C++17 functions with typed parameters and return values, such as `int largestElement(const vector<int>& nums)`. Each snippet includes its own standard-library headers. Switch 2.4 also bundles a C++17 compatibility header for `#include <bits/stdc++.h>` on Apple Clang; GNU-specific extensions are not provided. Linked-list and tree exercises include `ListNode` and `TreeNode` definitions. Implement the function shown in the starter; the app supplies test calls, so no `main` is needed. You can also copy a solution into an ordinary C++ program and call it from your own `main`.
+C++ starters and solutions are standard C++17 functions with typed parameters and return values, such as `int maximumElement(const vector<int>& nums)`. Each snippet includes its own standard-library headers. Switch 2.4 also bundles a C++17 compatibility header for `#include <bits/stdc++.h>` on Apple Clang; GNU-specific extensions are not provided. Linked-list and tree exercises include `ListNode` and `TreeNode` definitions. Implement the function shown in the starter; the app supplies test calls, so no `main` is needed. You can also copy a solution into an ordinary C++ program and call it from your own `main`.
 
 Problem examples use named test fields, with tree, list, and matrix diagrams where useful. The test panel offers argument fields and an optional JSON view. The Mac runner converts them to the function's C++ types behind the scenes, including trees, linked lists, optional values, and structured results. JSON is not part of the C++ code you write. Python uses `solve(input)` and can import standard-library modules. Output ordering follows each problem's contract. Included tests are practice checks, not an exhaustive judge.
 
@@ -76,11 +77,13 @@ The result is `dist/Switch-macOS.zip`. Rebuild after changing the source or curr
 ## Verify content
 
 ```sh
+python3 scripts/build-data.py
 node scripts/check-javascript.js
 node scripts/check-workspace.js
 node scripts/check-inputs.js
 node scripts/check-immersive.js
 node scripts/check-editor-submit.js
+node scripts/check-navigation.js
 python3 scripts/check-studio.py
 python3 scripts/check-theory.py
 python3 scripts/check-content.py
